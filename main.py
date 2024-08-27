@@ -6,7 +6,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from src.create_training_dataset import sample_images
 from src.data_pipeline import UnpairedImageDataModule
 from src.gan_training import UnpairedImageModel
-from src.models import Generator, Discriminator
+from models.baseline import Generator, Discriminator
 
 from src.config import SEED, NUM_EPOCHS, BATCH_SIZE, NUM_WORKERS, LR, BETA1, BETA2
 

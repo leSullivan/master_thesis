@@ -1,0 +1,11 @@
+imgs/backgrounds
+imgs/fences
+imgs/training_data
+
+runs
+
+**/__pycache__/
+**__pycache__
+imgs/.DS_Store
+
+.DS_Store

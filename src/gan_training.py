@@ -84,32 +84,38 @@ class UnpairedImageModel(pl.LightningModule):
         optimizer_D.step()
 
     def on_train_epoch_end(self):
-        # Log sample images
-        bg_imgs = next(iter(self.trainer.datamodule.train_dataloader()["background"]))[
-            :4
-        ]
-        fence_imgs = next(iter(self.trainer.datamodule.train_dataloader()["fence"]))[:4]
-        fake_fence_imgs = self.generator(bg_imgs)
+        if self.current_epoch % 50 == 0 & self.current_epoch != 0:
+            bg_imgs = next(
+                iter(self.trainer.datamodule.train_dataloader()["background"])
+            )[:4]
+            fence_imgs = next(
+                iter(self.trainer.datamodule.train_dataloader()["fence"])
+            )[:4]
+            fake_fence_imgs = self.generator(bg_imgs)
 
-        grid = make_grid(
-            torch.cat((bg_imgs, fake_fence_imgs, fence_imgs), dim=0),
-            nrow=4,
-            normalize=True,
-        )
+            grid = make_grid(
+                torch.cat((bg_imgs, fake_fence_imgs, fence_imgs), dim=0),
+                nrow=4,
+                normalize=True,
+            )
 
-        self.logger.experiment.add_image("Generated_Images", grid, self.current_epoch)
+            self.logger.experiment.add_image(
+                "Generated_Images", grid, self.current_epoch
+            )
 
-        real_images = torch.cat(self.fid_real_features)
-        fake_images = torch.cat(self.fid_fake_features)
+        if self.current_epoch % 10 == 0 & self.current_epoch != 0:
 
-        self.fid.update(real_images, real=True)
-        self.fid.update(fake_images, real=False)
+            real_images = torch.cat(self.fid_real_features)
+            fake_images = torch.cat(self.fid_fake_features)
 
-        fid_score = self.fid.compute().item()
-        self.log("train/FID", fid_score, prog_bar=True)
+            self.fid.update(real_images, real=True)
+            self.fid.update(fake_images, real=False)
 
-        self.fid_real_features.clear()
-        self.fid_fake_features.clear()
+            fid_score = self.fid.compute().item()
+            self.log("train/FID", fid_score, prog_bar=True)
+
+            self.fid_real_features.clear()
+            self.fid_fake_features.clear()
 
     def configure_optimizers(self):
         optimizer_G = torch.optim.Adam(

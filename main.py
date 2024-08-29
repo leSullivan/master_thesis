@@ -36,10 +36,15 @@ def main(model_name="baseline"):
 
     logger = TensorBoardLogger("tb_logs", name=model_name)
 
+    accelerator = "gpu" if torch.cuda.is_available() else "mps"
+
+    print(f"Using {accelerator} accelerator.")
+
     trainer = pl.Trainer(
         max_epochs=NUM_EPOCHS,
         log_every_n_steps=1,
         logger=logger,
+        accelerator=accelerator,
     )
 
     trainer.fit(model, data_module)

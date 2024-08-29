@@ -44,8 +44,9 @@ class Generator(nn.Module):
 
     def forward(self, noise, image):
         image_flat = image.view(image.size(0), -1)
+        noise_flat = noise.view(noise.size(0), -1)
 
-        input_combined = torch.cat((noise, image_flat), dim=1)
+        input_combined = torch.cat((noise_flat, image_flat), dim=1)
 
         x = self.fc1(input_combined)
         x = self.fc2(x)

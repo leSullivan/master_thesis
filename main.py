@@ -10,7 +10,7 @@ from models.baseline import Generator, Discriminator, cGAN
 from src.config import SEED, NUM_EPOCHS, BATCH_SIZE, NUM_WORKERS, LR, BETA1, BETA2
 
 _architecture_mapping = {
-    "baseline": [cGAN],
+    "baseline": cGAN,
 }
 
 _network_mapppin = {

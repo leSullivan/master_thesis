@@ -11,24 +11,16 @@ from src.config import IMG_H, IMG_W, IMG_CH, NOISE_DIM, BETA1, BETA2, LR
 class Generator(nn.Module):
     def __init__(
         self,
-        noise_dim=NOISE_DIM,
         input_channels=IMG_CH,
         output_channels=IMG_CH,
         image_height=IMG_H,
         image_width=IMG_W,
     ):
         super(Generator, self).__init__()
-        self.noise_dim = noise_dim
         self.input_channels = input_channels
         self.output_channels = output_channels
         self.image_height = image_height
         self.image_width = image_width
-
-        self.noise_processor = nn.Sequential(
-            nn.ConvTranspose2d(noise_dim, 512, kernel_size=4, stride=1, padding=0),
-            nn.BatchNorm2d(512),
-            nn.ReLU(True),
-        )
 
         self.encoder = nn.Sequential(
             nn.Conv2d(input_channels, 64, kernel_size=4, stride=2, padding=1),
@@ -45,7 +37,7 @@ class Generator(nn.Module):
         )
 
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(1024, 256, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1),
             nn.BatchNorm2d(256),
             nn.ReLU(True),
             nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
@@ -58,14 +50,11 @@ class Generator(nn.Module):
             nn.Tanh(),
         )
 
-    def forward(self, noise, image):
-        processed_noise = self.noise_processor(noise)
+    def forward(self, image):
 
         encoded_image = self.encoder(image)
 
-        combined = torch.cat((processed_noise, encoded_image), dim=1)
-
-        output = self.decoder(combined)
+        output = self.decoder(encoded_image)
 
         return output
 
@@ -132,11 +121,7 @@ class cGAN(pl.LightningModule):
 
         optimizer_G, optimizer_D = self.optimizers()
 
-        noise = torch.randn(
-            bg_img.size(0), self.hparams.noise_dim, 1, 1, device=self.device
-        )
-
-        self.generated_fences = self.generator(noise, bg_img)
+        self.generated_fences = self.generator(bg_img)
 
         pred_fake = self.discriminator(self.generated_fences)
         loss_GAN = self.adversarial_loss(pred_fake, torch.ones_like(pred_fake))

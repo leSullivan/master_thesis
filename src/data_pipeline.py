@@ -1,11 +1,13 @@
 import os
 import pytorch_lightning as pl
 
-from PIL import Image
+from PIL import Image, ImageFile
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
 from .config import IMG_H, IMG_W, IMG_CH, TRAIN_IMG_PATH, BATCH_SIZE
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class UnpairedImageDataset(Dataset):

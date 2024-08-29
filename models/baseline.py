@@ -18,44 +18,56 @@ class Generator(nn.Module):
         image_width=IMG_W,
     ):
         super(Generator, self).__init__()
-
         self.noise_dim = noise_dim
         self.input_channels = input_channels
         self.output_channels = output_channels
         self.image_height = image_height
         self.image_width = image_width
 
-        self.fc1 = nn.Sequential(
-            nn.Linear(noise_dim + input_channels * image_height * image_width, 512),
+        self.noise_processor = nn.Sequential(
+            nn.ConvTranspose2d(noise_dim, 512, kernel_size=4, stride=1, padding=0),
+            nn.BatchNorm2d(512),
             nn.ReLU(True),
         )
 
-        self.fc2 = nn.Sequential(
-            nn.Linear(512, 1024), nn.BatchNorm1d(1024), nn.ReLU(True)
+        self.encoder = nn.Sequential(
+            nn.Conv2d(input_channels, 64, kernel_size=4, stride=2, padding=1),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.2, inplace=True),
         )
 
-        self.fc3 = nn.Sequential(
-            nn.Linear(1024, 2048), nn.BatchNorm1d(2048), nn.ReLU(True)
-        )
-
-        self.fc4 = nn.Sequential(
-            nn.Linear(2048, output_channels * image_height * image_width), nn.Tanh()
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(1024, 256, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(True),
+            nn.ConvTranspose2d(64, output_channels, kernel_size=4, stride=2, padding=1),
+            nn.Tanh(),
         )
 
     def forward(self, noise, image):
-        image_flat = image.view(image.size(0), -1)
-        noise_flat = noise.view(noise.size(0), -1)
+        processed_noise = self.noise_processor(noise)
 
-        input_combined = torch.cat((noise_flat, image_flat), dim=1)
+        encoded_image = self.encoder(image)
 
-        x = self.fc1(input_combined)
-        x = self.fc2(x)
-        x = self.fc3(x)
-        x = self.fc4(x)
+        combined = torch.cat((processed_noise, encoded_image), dim=1)
 
-        x = x.view(x.size(0), self.output_channels, self.image_height, self.image_width)
+        output = self.decoder(combined)
 
-        return x
+        return output
 
 
 class Discriminator(nn.Module):

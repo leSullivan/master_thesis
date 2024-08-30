@@ -5,7 +5,7 @@ from PIL import Image, ImageFile
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-from .config import IMG_H, IMG_W, IMG_CH, TRAIN_IMG_PATH, BATCH_SIZE
+from .config import IMG_CH, TRAIN_IMG_PATH
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -34,7 +34,7 @@ class UnpairedImageDataset(Dataset):
 
 
 class UnpairedImageDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size=32, num_workers=4):
+    def __init__(self, img_h, img_w, batch_size, num_workers=4):
         super().__init__()
         self.data_dir = TRAIN_IMG_PATH
         self.batch_size = batch_size
@@ -42,7 +42,7 @@ class UnpairedImageDataModule(pl.LightningDataModule):
 
         self.transform = transforms.Compose(
             [
-                transforms.Resize((IMG_H, IMG_W)),
+                transforms.Resize((img_h, img_w)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,) * IMG_CH, (0.5,) * IMG_CH),
             ]

@@ -11,10 +11,10 @@ from src.config import IMG_H, IMG_W, IMG_CH, NOISE_DIM, BETA1, BETA2, LR
 class Generator(nn.Module):
     def __init__(
         self,
+        image_height,
+        image_width,
         input_channels=IMG_CH,
         output_channels=IMG_CH,
-        image_height=IMG_H,
-        image_width=IMG_W,
     ):
         super(Generator, self).__init__()
         self.input_channels = input_channels
@@ -90,10 +90,9 @@ class cGAN(pl.LightningModule):
         self,
         generator,
         discriminator,
-        lr=LR,
-        beta1=BETA1,
-        beta2=BETA2,
-        noise_dim=NOISE_DIM,
+        lr,
+        beta1,
+        beta2,
     ):
         super().__init__()
         self.save_hyperparameters(ignore=["generator", "discriminator"])

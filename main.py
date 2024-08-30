@@ -52,7 +52,7 @@ def main(args):
 
     _Generator, _Discriminator = _network_mapppin[args.model_name]
 
-    generator = _Generator(imgage_height=args.img_height, image_width=args.img_width)
+    generator = _Generator()
     discriminator = _Discriminator()
 
     model = _GAN(

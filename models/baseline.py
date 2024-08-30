@@ -11,16 +11,12 @@ from src.config import IMG_H, IMG_W, IMG_CH, NOISE_DIM, BETA1, BETA2, LR
 class Generator(nn.Module):
     def __init__(
         self,
-        image_height,
-        image_width,
         input_channels=IMG_CH,
         output_channels=IMG_CH,
     ):
         super(Generator, self).__init__()
         self.input_channels = input_channels
         self.output_channels = output_channels
-        self.image_height = image_height
-        self.image_width = image_width
 
         self.encoder = nn.Sequential(
             nn.Conv2d(input_channels, 64, kernel_size=4, stride=2, padding=1),

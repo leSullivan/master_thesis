@@ -4,99 +4,45 @@ import pytorch_lightning as pl
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision.utils import make_grid
 
+from models import Generator, Discriminator
 
-from src.config import IMG_H, IMG_W, IMG_CH, NOISE_DIM, BETA1, BETA2, LR
 
-
-class Generator(nn.Module):
+class CGAN(pl.LightningModule):
     def __init__(
         self,
-        input_channels=IMG_CH,
-        output_channels=IMG_CH,
-    ):
-        super(Generator, self).__init__()
-        self.input_channels = input_channels
-        self.output_channels = output_channels
-
-        self.encoder = nn.Sequential(
-            nn.Conv2d(input_channels, 64, kernel_size=4, stride=2, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
-
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(512, 256, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(True),
-            nn.ConvTranspose2d(64, output_channels, kernel_size=4, stride=2, padding=1),
-            nn.Tanh(),
-        )
-
-    def forward(self, image):
-
-        encoded_image = self.encoder(image)
-
-        output = self.decoder(encoded_image)
-
-        return output
-
-
-class Discriminator(nn.Module):
-    def __init__(self):
-        super(Discriminator, self).__init__()
-        self.features = nn.Sequential(
-            nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(256, 512, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.AdaptiveAvgPool2d(1),
-        )
-        self.classifier = nn.Linear(512, 1)
-
-    def forward(self, x):
-        x = self.features(x)
-        x = x.view(x.size(0), -1)
-        x = self.classifier(x)
-        return torch.sigmoid(x)
-
-
-class cGAN(pl.LightningModule):
-    def __init__(
-        self,
-        generator,
-        discriminator,
         lr,
         beta1,
         beta2,
+        img_h,
+        img_w,
+        lamba_identity,
+        norm_type,
+        discriminator_type,
+        ndf,
+        nd_layers,
+        generator_type,
+        ngf,
+        n_downsampling,
     ):
         super().__init__()
-        self.save_hyperparameters(ignore=["generator", "discriminator"])
+        self.save_hyperparameters()
 
-        self.generator = generator
-        self.discriminator = discriminator
+        self.generator = Generator(
+            ngf=ngf,
+            n_downsampling=n_downsampling,
+            norm_type=norm_type,
+            generator_type=generator_type,
+        )
+        self.discriminator = Discriminator(
+            ndf=ndf,
+            nd_layers=nd_layers,
+            norm_type=norm_type,
+            discriminator_type=discriminator_type,
+        )
 
         self.criterion_gan = nn.MSELoss()
+
+        self.criterion_identity = nn.L1Loss()
 
         # FID metric
         self.fid = FrechetInceptionDistance(feature=2048)
@@ -119,10 +65,14 @@ class cGAN(pl.LightningModule):
         self.generated_fences = self.generator(bg_img)
 
         pred_fake = self.discriminator(self.generated_fences)
+
         loss_GAN = self.adversarial_loss(pred_fake, torch.ones_like(pred_fake))
+        loss_L1 = self.criterion_identity(self.generated_fences, bg_img)
 
-        loss_G = loss_GAN
+        loss_G = loss_GAN + self.hparams.lamba_identity * loss_L1
 
+        self.log("train/_loss_G", loss_G, prog_bar=True, on_step=True, on_epoch=True)
+        self.log("train/_loss_L1", loss_L1, prog_bar=True, on_step=True, on_epoch=True)
         self.log(
             "train/_loss_G",
             loss_G,
@@ -130,6 +80,7 @@ class cGAN(pl.LightningModule):
             on_step=True,
             on_epoch=True,
         )
+        self.log("train/_loss_L1", loss_L1, prog_bar=True, on_step=True, on_epoch=True)
 
         optimizer_G.zero_grad()
         self.manual_backward(loss_G)
@@ -151,8 +102,12 @@ class cGAN(pl.LightningModule):
         self.manual_backward(loss_D)
         optimizer_D.step()
 
+        if self.current_epoch % 10 == 0 and self.current_epoch != 0:
+            self.fid.update(fence_imgs.to(torch.float32), real=True)
+            self.fid.update(self.generated_fences.to(torch.float32), real=False)
+
     def on_train_epoch_end(self):
-        if self.current_epoch % 50 == 0 & self.current_epoch != 0:
+        if self.current_epoch % 50 == 0 and self.current_epoch != 0:
             bg_imgs = next(
                 iter(self.trainer.datamodule.train_dataloader()["background"])
             )[:4]
@@ -171,7 +126,7 @@ class cGAN(pl.LightningModule):
                 "Generated_Images", grid, self.current_epoch
             )
 
-        if self.current_epoch % 10 == 0 & self.current_epoch != 0:
+        if self.current_epoch % 10 == 0 and self.current_epoch != 0:
 
             real_images = torch.cat(self.fid_real_features)
             fake_images = torch.cat(self.fid_fake_features)
@@ -182,8 +137,7 @@ class cGAN(pl.LightningModule):
             fid_score = self.fid.compute().item()
             self.log("train/FID", fid_score, prog_bar=True)
 
-            self.fid_real_features.clear()
-            self.fid_fake_features.clear()
+            self.fid.reset()
 
     def configure_optimizers(self):
         optimizer_G = torch.optim.Adam(

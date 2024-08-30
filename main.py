@@ -5,14 +5,15 @@ import pytorch_lightning as pl
 
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
-
+from typing import Literal
 
 from src.create_training_dataset import sample_images
 from src.data_pipeline import UnpairedImageDataModule
-from models.baseline import Generator, Discriminator, cGAN
+from models import CGAN, CycleGAN
 
 from src.config import (
     SEED,
+    MODEL_TYPE,
     NUM_EPOCHS,
     BATCH_SIZE,
     NUM_WORKERS,
@@ -21,21 +22,18 @@ from src.config import (
     BETA2,
     IMG_H,
     IMG_W,
+    NDF,
+    NGF,
+    N_DOWNSAMPLING,
+    NORM_TYPE,
+    DISCRIMINATOR_TYPE,
+    GENERATOR_TYPE,
+    ND_LAYERS,
+    LAMBDA_L1,
 )
-
-_architecture_mapping = {
-    "baseline": cGAN,
-}
-
-_network_mapppin = {
-    "baseline": [Generator, Discriminator],
-}
 
 
 def main(args):
-    assert (
-        args.model_name in _architecture_mapping
-    ), f"Invalid model name: {args.model_name}"
 
     data_module = UnpairedImageDataModule(
         batch_size=args.batch_size,
@@ -44,24 +42,18 @@ def main(args):
         img_w=args.img_w,
     )
 
+    if args.model_name.lower() == "cgan":
+        GAN = CGAN(**vars(args))
+    elif args.model_namelower() == "cyclegan":
+        GAN = CycleGAN(**vars(args))
+    else:
+        raise NotImplementedError(f"Invalid model name: {args.model}")
+
     if args.checkpoint_path is not None:
         path = _get_checkpoint_path(args.model_name, args.checkpoint_path)
-        _GAN = _architecture_mapping[args.model_name].load_from_checkpoint(path)
+        model = GAN.load_from_checkpoint(path).to(torch.float32)
     else:
-        _GAN = _architecture_mapping[args.model_name]
-
-    _Generator, _Discriminator = _network_mapppin[args.model_name]
-
-    generator = _Generator()
-    discriminator = _Discriminator()
-
-    model = _GAN(
-        generator=generator,
-        discriminator=discriminator,
-        lr=args.lr,
-        beta1=args.beta1,
-        beta2=args.beta2,
-    ).to(torch.float32)
+        model = GAN.to(torch.float32)
 
     logger = TensorBoardLogger("tb_logs", name=args.model_name)
 
@@ -72,27 +64,26 @@ def main(args):
         save_last=True,
     )
 
-    accelerator = "gpu" if torch.cuda.is_available() else "mps"
-
     trainer = pl.Trainer(
         max_epochs=args.num_epochs,
         log_every_n_steps=1,
         logger=logger,
-        accelerator=accelerator,
+        accelerator="gpu" if torch.cuda.is_available() else "mps",
         callbacks=[checkpoint_callback],
     )
 
     trainer.fit(model, data_module)
 
 
-def _get_checkpoint_path(model_name, checkpoint_name):
-    if checkpoint_name is None:
+def _get_checkpoint_path(model_name, version_name):
+    if version_name is None:
         return None
 
     path = os.path.join(
-        "checkpoints",
+        "tb_logs",
         model_name,
-        checkpoint_name,
+        version_name,
+        "last.ckpt",
     )
 
     assert os.path.exists(path), f"Invalid checkpoint path: {path}"
@@ -104,17 +95,12 @@ if __name__ == "__main__":
     pl.seed_everything(SEED)
     torch.use_deterministic_algorithms(True)
 
-    # Argument parser setup
+    # Training Setup
     parser = argparse.ArgumentParser(description="Train a GAN model")
-    parser.add_argument("--num_epochs", type=int, default=NUM_EPOCHS)
-    parser.add_argument("--batch_size", type=int, default=BATCH_SIZE)
-    parser.add_argument("--lr", type=float, default=LR)
-    parser.add_argument("--beta1", type=float, default=BETA1)
-    parser.add_argument("--beta2", type=float, default=BETA2)
     parser.add_argument(
-        "--img-h",
-        type=int,
-        default=IMG_H,
+        "--model_name",
+        type=str,
+        default=MODEL_TYPE,
     )
     parser.add_argument(
         "--img-w",
@@ -122,12 +108,64 @@ if __name__ == "__main__":
         default=IMG_W,
     )
     parser.add_argument(
-        "--model_name",
-        type=str,
-        default="baseline",
+        "--img-h",
+        type=int,
+        default=IMG_H,
     )
     parser.add_argument(
-        "--checkpoint_path",
+        "--norm_type",
+        type=Literal["batch", "instance"],
+        default=NORM_TYPE,
+    )
+
+    # generator
+    parser.add_argument(
+        "--generator_type",
+        type=Literal["resnet", "unet", "unet-dropout", "diffusion"],
+        default=GENERATOR_TYPE,
+    )
+
+    parser.add_argument(
+        "--ngf", type=int, default=NGF, help="Number of generator filters"
+    )
+
+    parser.add_argument(
+        "--n_downsampling",
+        type=int,
+        default=N_DOWNSAMPLING,
+    )
+
+    # discriminator
+    parser.add_argument(
+        "--discriminator_type",
+        type=Literal["baseline", "patch", "pixel"],
+        default=DISCRIMINATOR_TYPE,
+    )
+
+    parser.add_argument("--ndf", type=int, default=NDF)
+
+    parser.add_argument(
+        "--ng_layers",
+        type=str,
+        default=ND_LAYERS,
+    )
+
+    # training
+    parser.add_argument("--num_epochs", type=int, default=NUM_EPOCHS)
+    parser.add_argument("--batch_size", type=int, default=BATCH_SIZE)
+    parser.add_argument("--lr", type=float, default=LR)
+    parser.add_argument("--beta1", type=float, default=BETA1)
+    parser.add_argument("--beta2", type=float, default=BETA2)
+    parser.add_argument(
+        "--lambda-l1",
+        type=float,
+        default=LAMBDA_L1,
+        help="Weight for L1 loss",
+    )
+
+    # checkpoint
+    parser.add_argument(
+        "--checkpoint_version_name",
         type=str,
         default=None,
     )

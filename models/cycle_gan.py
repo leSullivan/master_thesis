@@ -1,134 +1,174 @@
 import torch
 from torch import nn
+import pytorch_lightning as pl
+from torchmetrics.image.fid import FrechetInceptionDistance
+from torchvision.utils import make_grid
 
-from src.config import IMG_CH
-
-import torch
-import torch.nn as nn
+from models import Generator, Discriminator
 
 
-class UNetBlock(nn.Module):
+class CycleGAN(pl.LightningModule):
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        downsample=True,
-        use_dropout=False,
-        norm_type="instance",
+        lr,
+        beta1,
+        beta2,
+        lambda_cycle,
+        lambda_identity,
+        norm_type,
+        ngf,
+        ndf,
+        n_downsampling,
+        nd_layers,
     ):
-        super(UNetBlock, self).__init__()
+        super().__init__()
+        self.save_hyperparameters()
 
-        if norm_type.lower() == "batch":
-            norm_layer = nn.BatchNorm2d
-        elif norm_type.lower() == "instance":
-            norm_layer = nn.InstanceNorm2d
-        else:
-            raise ValueError(f"Unsupported normalization type: {norm_type}")
+        # Generators
+        self.G_A2B = Generator(ngf, n_downsampling, norm_type)
+        self.G_B2A = Generator(ngf, n_downsampling, norm_type)
 
-        conv_layer = (
-            nn.Conv2d(
-                in_channels,
-                out_channels,
-                4,
-                stride=2,
-                padding=1,
-                bias=False,
+        # Discriminators
+        self.D_A = Discriminator(ndf, nd_layers, norm_type)
+        self.D_B = Discriminator(ndf, nd_layers, norm_type)
+
+        # Loss functions
+        self.criterion_gan = nn.MSELoss()
+        self.criterion_cycle = nn.L1Loss()
+        self.criterion_identity = nn.L1Loss()
+
+        # FID metric
+        self.fid = FrechetInceptionDistance(feature=2048)
+        self.fid_real_A = []
+        self.fid_fake_A = []
+        self.fid_real_B = []
+        self.fid_fake_B = []
+
+        self.automatic_optimization = False
+
+    def forward(self, x):
+        return self.G_A2B(x)
+
+    def training_step(self, batch, batch_idx):
+        real_A, real_B = batch["A"], batch["B"]
+
+        opt_G, opt_D = self.optimizers()
+
+        # Generate fake images
+        fake_B = self.G_A2B(real_A)
+        fake_A = self.G_B2A(real_B)
+
+        # Train Generators
+        # Identity loss
+        identity_A = self.G_B2A(real_A)
+        identity_B = self.G_A2B(real_B)
+        loss_identity_A = self.criterion_identity(identity_A, real_A)
+        loss_identity_B = self.criterion_identity(identity_B, real_B)
+
+        # GAN loss
+        pred_fake_B = self.D_B(fake_B)
+        loss_GAN_A2B = self.criterion_gan(pred_fake_B, torch.ones_like(pred_fake_B))
+        pred_fake_A = self.D_A(fake_A)
+        loss_GAN_B2A = self.criterion_gan(pred_fake_A, torch.ones_like(pred_fake_A))
+
+        # Cycle loss
+        recovered_A = self.G_B2A(fake_B)
+        loss_cycle_ABA = self.criterion_cycle(recovered_A, real_A)
+        recovered_B = self.G_A2B(fake_A)
+        loss_cycle_BAB = self.criterion_cycle(recovered_B, real_B)
+
+        # Total generator loss
+        loss_G = (
+            loss_GAN_A2B
+            + loss_GAN_B2A
+            + self.hparams.lambda_cycle * (loss_cycle_ABA + loss_cycle_BAB)
+            + self.hparams.lambda_identity * (loss_identity_A + loss_identity_B)
+        )
+
+        self.log("train/loss_G", loss_G, prog_bar=True, on_step=True, on_epoch=True)
+
+        opt_G.zero_grad()
+        self.manual_backward(loss_G)
+        opt_G.step()
+
+        # Train Discriminators
+        # Discriminator A
+        pred_real_A = self.D_A(real_A)
+        loss_D_real_A = self.adversarial_loss(pred_real_A, torch.ones_like(pred_real_A))
+        pred_fake_A = self.D_A(fake_A.detach())
+        loss_D_fake_A = self.adversarial_loss(
+            pred_fake_A, torch.zeros_like(pred_fake_A)
+        )
+        loss_D_A = (loss_D_real_A + loss_D_fake_A) * 0.5
+
+        # Discriminator B
+        pred_real_B = self.D_B(real_B)
+        loss_D_real_B = self.adversarial_loss(pred_real_B, torch.ones_like(pred_real_B))
+        pred_fake_B = self.D_B(fake_B.detach())
+        loss_D_fake_B = self.adversarial_loss(
+            pred_fake_B, torch.zeros_like(pred_fake_B)
+        )
+        loss_D_B = (loss_D_real_B + loss_D_fake_B) * 0.5
+
+        # Total discriminator loss
+        loss_D = loss_D_A + loss_D_B
+
+        self.log("train/loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True)
+
+        opt_D.zero_grad()
+        self.manual_backward(loss_D)
+        opt_D.step()
+
+    def on_train_epoch_end(self):
+        if self.current_epoch % 50 == 0 and self.current_epoch != 0:
+            real_A = next(iter(self.trainer.datamodule.train_dataloader()))["A"][:4]
+            real_B = next(iter(self.trainer.datamodule.train_dataloader()))["B"][:4]
+            fake_B = self.G_A2B(real_A)
+            fake_A = self.G_B2A(real_B)
+
+            grid = make_grid(
+                torch.cat((real_A, fake_B, real_B, fake_A), dim=0),
+                nrow=4,
+                normalize=True,
             )
-            if downsample
-            else nn.ConvTranspose2d(
-                in_channels, out_channels, 4, stride=2, padding=1, bias=False
+
+            self.logger.experiment.add_image(
+                "Generated_Images", grid, self.current_epoch
             )
+
+        if self.current_epoch % 10 == 0 and self.current_epoch != 0:
+            real_A = torch.cat(self.fid_real_A)
+            fake_B = torch.cat(self.fid_fake_B)
+            real_B = torch.cat(self.fid_real_B)
+            fake_A = torch.cat(self.fid_fake_A)
+
+            self.fid.update(real_A, real=True)
+            self.fid.update(fake_B, real=False)
+            fid_score_A2B = self.fid.compute().item()
+
+            self.fid.reset()
+
+            self.fid.update(real_B, real=True)
+            self.fid.update(fake_A, real=False)
+            fid_score_B2A = self.fid.compute().item()
+
+            self.log("train/FID_A2B", fid_score_A2B, prog_bar=True)
+            self.log("train/FID_B2A", fid_score_B2A, prog_bar=True)
+
+            self.fid_real_A.clear()
+            self.fid_fake_B.clear()
+            self.fid_real_B.clear()
+            self.fid_fake_A.clear()
+
+    def configure_optimizers(self):
+        opt_G = torch.optim.Adam(
+            list(self.G_A2B.parameters()) + list(self.G_B2A.parameters()),
+            lr=self.hparams.lr,
+            betas=(self.hparams.beta1, self.hparams.beta2),
         )
-
-        act_layer = (
-            nn.LeakyReLU(0.2, inplace=True) if downsample else nn.ReLU(inplace=True)
+        opt_D = torch.optim.Adam(
+            list(self.D_A.parameters()) + list(self.D_B.parameters()),
+            lr=self.hparams.lr,
+            betas=(self.hparams.beta1, self.hparams.beta2),
         )
-
-        self.conv = nn.Sequential(conv_layer, norm_layer(out_channels), act_layer)
-
-        self.use_dropout = use_dropout
-        self.dropout = nn.Dropout(0.5)
-
-    def forward(self, x):
-        x = self.conv(x)
-        return self.dropout(x) if self.use_dropout else x
-
-
-class UNetGenerator(nn.Module):
-    def __init__(
-        self, input_channels=3, output_channels=3, ngf=64, norm_type="instance"
-    ):
-        super(UNetGenerator, self).__init__()
-
-        self.down1 = UNetBlock(
-            input_channels, ngf, downsample=True, norm_type=norm_type
-        )
-        self.down2 = UNetBlock(ngf, ngf * 2, downsample=True, norm_type=norm_type)
-        self.down3 = UNetBlock(ngf * 2, ngf * 4, downsample=True, norm_type=norm_type)
-        self.down4 = UNetBlock(ngf * 4, ngf * 8, downsample=True, norm_type=norm_type)
-        self.down5 = UNetBlock(ngf * 8, ngf * 8, downsample=True, norm_type=norm_type)
-        self.down6 = UNetBlock(ngf * 8, ngf * 8, downsample=True, norm_type=norm_type)
-        self.down7 = UNetBlock(ngf * 8, ngf * 8, downsample=True, norm_type=norm_type)
-        self.down8 = UNetBlock(ngf * 8, ngf * 8, downsample=True, norm_type=norm_type)
-
-        self.up1 = UNetBlock(
-            ngf * 8, ngf * 8, downsample=False, norm_type=norm_type, use_dropout=True
-        )
-        self.up2 = UNetBlock(
-            ngf * 16, ngf * 8, downsample=False, norm_type=norm_type, use_dropout=True
-        )
-        self.up3 = UNetBlock(
-            ngf * 16, ngf * 8, downsample=False, norm_type=norm_type, use_dropout=True
-        )
-        self.up4 = UNetBlock(ngf * 16, ngf * 8, downsample=False, norm_type=norm_type)
-        self.up5 = UNetBlock(ngf * 16, ngf * 4, downsample=False, norm_type=norm_type)
-        self.up6 = UNetBlock(ngf * 8, ngf * 2, downsample=False, norm_type=norm_type)
-        self.up7 = UNetBlock(ngf * 4, ngf, downsample=False, norm_type=norm_type)
-
-        self.final = nn.Sequential(
-            nn.ConvTranspose2d(ngf * 2, output_channels, 4, stride=2, padding=1),
-            nn.Tanh(),
-        )
-
-    def forward(self, x):
-        d1 = self.down1(x)
-        d2 = self.down2(d1)
-        d3 = self.down3(d2)
-        d4 = self.down4(d3)
-        d5 = self.down5(d4)
-        d6 = self.down6(d5)
-        d7 = self.down7(d6)
-        d8 = self.down8(d7)
-
-        u1 = self.up1(d8)
-        u2 = self.up2(torch.cat([u1, d7], dim=1))
-        u3 = self.up3(torch.cat([u2, d6], dim=1))
-        u4 = self.up4(torch.cat([u3, d5], dim=1))
-        u5 = self.up5(torch.cat([u4, d4], dim=1))
-        u6 = self.up6(torch.cat([u5, d3], dim=1))
-        u7 = self.up7(torch.cat([u6, d2], dim=1))
-
-        return self.final(torch.cat([u7, d1], dim=1))
-
-
-class PatchDiscriminator(nn.Module):
-    def __init__(self, in_channels=IMG_CH):
-        super(PatchDiscriminator, self).__init__()
-
-        def discriminator_block(in_filters, out_filters, normalize=True):
-            layers = [nn.Conv2d(in_filters, out_filters, 4, stride=2, padding=1)]
-            if normalize:
-                layers.append(nn.InstanceNorm2d(out_filters))
-            layers.append(nn.LeakyReLU(0.2, inplace=True))
-            return layers
-
-        self.model = nn.Sequential(
-            *discriminator_block(in_channels, 64, normalize=False),
-            *discriminator_block(64, 128),
-            *discriminator_block(128, 256),
-            *discriminator_block(256, 512),
-            nn.Conv2d(512, 1, 4, padding=1),
-        )
-
-    def forward(self, x):
-        return self.model(x)
+        return [opt_G, opt_D], []

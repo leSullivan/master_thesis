@@ -38,7 +38,10 @@ def main(args):
     ), f"Invalid model name: {args.model_name}"
 
     data_module = UnpairedImageDataModule(
-        batch_size=args.batch_size, num_workers=NUM_WORKERS
+        batch_size=args.batch_size,
+        num_workers=NUM_WORKERS,
+        img_h=args.img_h,
+        img_w=args.img_w,
     )
 
     if args.checkpoint_path is not None:

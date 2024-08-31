@@ -3,7 +3,7 @@ import numpy as np
 import torch.nn as nn
 
 from src.config import IMG_CH
-from utils import get_norm_layer
+from .utils import get_norm_layer
 
 
 class Discriminator(nn.Module):

@@ -88,14 +88,7 @@ class NLayerDiscriminator(nn.Module):
         self.model = nn.Sequential(*sequence)
 
     def forward(self, input):
-        if self.getIntermFeat:
-            res = [input]
-            for n in range(self.n_layers + 2):
-                model = getattr(self, "model" + str(n))
-                res.append(model(res[-1]))
-            return res[1:]
-        else:
-            return self.model(input)
+        return self.model(input)
 
 
 # https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py

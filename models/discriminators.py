@@ -25,7 +25,7 @@ class Discriminator(nn.Module):
                 nd_layers,
                 norm_layer,
                 input_channels,
-                use_sigmoid=True,
+                use_patches=False,
             )
 
         elif discriminator_type == "patch":
@@ -51,7 +51,9 @@ class Discriminator(nn.Module):
 
 # https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
 class NLayerDiscriminator(nn.Module):
-    def __init__(self, ndf, n_layers, norm_layer, input_nc, use_sigmoid=False):
+    def __init__(
+        self, ndf, n_layers, norm_layer, input_nc, use_sigmoid=False, use_patches=True
+    ):
         super(NLayerDiscriminator, self).__init__()
         self.n_layers = n_layers
 
@@ -80,10 +82,17 @@ class NLayerDiscriminator(nn.Module):
             nn.LeakyReLU(0.2, True),
         ]
 
-        sequence += [nn.Conv2d(nf, 1, kernel_size=kw, stride=1, padding=padw)]
-
-        if use_sigmoid:
+        if use_patches:
+            sequence += [nn.Conv2d(nf, 1, kernel_size=kw, stride=1, padding=padw)]
+            if use_sigmoid:
+                sequence += [nn.Sigmoid()]
+        else:
+            sequence += [nn.AdaptiveAvgPool2d(1)]
+            sequence += [nn.Flatten()]
+            sequence += [nn.Linear(nf, 1)]
             sequence += [nn.Sigmoid()]
+
+        self.model = nn.Sequential(*sequence)
 
         self.model = nn.Sequential(*sequence)
 

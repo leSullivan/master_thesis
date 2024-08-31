@@ -48,7 +48,7 @@ def main(args):
     else:
         raise NotImplementedError(f"Invalid model name: {args.model}")
 
-    if args.checkpoint_path is not None:
+    if args.checkpoint_version_name is not None:
         path = _get_checkpoint_path(args.model_name, args.checkpoint_path)
         model = GAN.load_from_checkpoint(path).to(torch.float32)
     else:

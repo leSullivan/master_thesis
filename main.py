@@ -5,7 +5,6 @@ import pytorch_lightning as pl
 
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
-from typing import Literal
 
 from src.create_training_dataset import sample_images
 from src.data_pipeline import UnpairedImageDataModule
@@ -92,11 +91,9 @@ def _get_checkpoint_path(model_name, version_name):
 
 
 if __name__ == "__main__":
-    pl.seed_everything(SEED)
-    torch.use_deterministic_algorithms(True)
+    parser = argparse.ArgumentParser(description="Train a GAN model")
 
     # Training Setup
-    parser = argparse.ArgumentParser(description="Train a GAN model")
     parser.add_argument(
         "--model_name",
         type=str,
@@ -114,14 +111,14 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--norm_type",
-        type=Literal["batch", "instance"],
+        type=str,
         default=NORM_TYPE,
     )
 
     # generator
     parser.add_argument(
         "--generator_type",
-        type=Literal["resnet", "unet", "unet-dropout", "diffusion"],
+        type=str,
         default=GENERATOR_TYPE,
     )
 
@@ -138,7 +135,7 @@ if __name__ == "__main__":
     # discriminator
     parser.add_argument(
         "--discriminator_type",
-        type=Literal["baseline", "patch", "pixel"],
+        type=str,
         default=DISCRIMINATOR_TYPE,
     )
 
@@ -172,4 +169,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(args)
+    if False:
+        print("Generating sample images...")
+        sample_images()
+        print("Sample images generated successfully.")
+    else:
+        pl.seed_everything(SEED)
+        torch.use_deterministic_algorithms(True)
+        main(args)

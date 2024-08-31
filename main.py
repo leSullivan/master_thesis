@@ -67,7 +67,7 @@ def main(args):
         max_epochs=args.num_epochs,
         log_every_n_steps=1,
         logger=logger,
-        accelerator="gpu" if torch.cuda.is_available() else "mps",
+        accelerator="gpu" if torch.cuda.is_available() else "cpu",
         callbacks=[checkpoint_callback],
     )
 

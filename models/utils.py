@@ -1,3 +1,4 @@
+import torch
 import functools
 from torch import nn
 
@@ -10,3 +11,8 @@ def get_norm_layer(norm_type):
     else:
         raise NotImplementedError("normalization layer [%s] is not found" % norm_type)
     return norm_layer
+
+
+def normalize_tensor(x):
+    normalized = (x + 1) / 2
+    return normalized

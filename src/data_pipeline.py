@@ -56,6 +56,10 @@ class UnpairedImageDataModule(pl.LightningDataModule):
             self.train_fence = UnpairedImageDataset(
                 self.data_dir, "trainFence", self.transform
             )
+            self.val_bg = UnpairedImageDataset(self.data_dir, "valBg", self.transform)
+            self.val_fence = UnpairedImageDataset(
+                self.data_dir, "valFence", self.transform
+            )
 
     def train_dataloader(self):
         loader_A = DataLoader(
@@ -68,6 +72,21 @@ class UnpairedImageDataModule(pl.LightningDataModule):
             self.train_fence,
             batch_size=self.batch_size,
             shuffle=True,
+            num_workers=self.num_workers,
+        )
+        return {"background": loader_A, "fence": loader_B}
+
+    def val_dataloader(self):
+        loader_A = DataLoader(
+            self.val_bg,
+            batch_size=4,
+            shuffle=False,
+            num_workers=self.num_workers,
+        )
+        loader_B = DataLoader(
+            self.train_fence,
+            batch_size=4,
+            shuffle=False,
             num_workers=self.num_workers,
         )
         return {"background": loader_A, "fence": loader_B}

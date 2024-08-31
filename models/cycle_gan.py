@@ -20,6 +20,8 @@ class CycleGAN(pl.LightningModule):
         ndf,
         n_downsampling,
         nd_layers,
+        *args,
+        **kwargs,
     ):
         super().__init__()
         self.save_hyperparameters()

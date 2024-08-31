@@ -23,6 +23,8 @@ class CGAN(pl.LightningModule):
         generator_type,
         ngf,
         n_downsampling,
+        *args,
+        **kwargs,
     ):
         super().__init__()
         self.save_hyperparameters()

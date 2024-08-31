@@ -142,7 +142,7 @@ if __name__ == "__main__":
     parser.add_argument("--ndf", type=int, default=NDF)
 
     parser.add_argument(
-        "--ng_layers",
+        "--nd_layers",
         type=str,
         default=ND_LAYERS,
     )
@@ -154,10 +154,9 @@ if __name__ == "__main__":
     parser.add_argument("--beta1", type=float, default=BETA1)
     parser.add_argument("--beta2", type=float, default=BETA2)
     parser.add_argument(
-        "--lambda-l1",
+        "--lamba_identity",
         type=float,
         default=LAMBDA_L1,
-        help="Weight for L1 loss",
     )
 
     # checkpoint

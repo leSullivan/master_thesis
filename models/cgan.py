@@ -79,10 +79,8 @@ class CGAN(pl.LightningModule):
 
         loss_G = loss_adv + self.hparams.lamba_identity * loss_L1
 
-        self.log(
-            "train/_loss_adv", loss_adv, prog_bar=True, on_step=True, on_epoch=True
-        )
-        self.log("train/_loss_L1", loss_L1, prog_bar=True, on_step=True, on_epoch=True)
+        self.log("train/_loss_adv", loss_adv, on_step=True, on_epoch=True)
+        self.log("train/_loss_L1", loss_L1, on_step=True, on_epoch=True)
         self.log(
             "train/_loss_G",
             loss_G,

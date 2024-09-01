@@ -131,11 +131,12 @@ class CGAN(pl.LightningModule):
                 "Generated_Images", grid, self.current_epoch
             )
 
-        if self.current_epoch % 10 == 0 and self.current_epoch != 0:
+        # if self.current_epoch % 10 == 0 and self.current_epoch != 0:
 
-            fid_score = self.fid.compute().item()
-            self.log("train/FID", fid_score, prog_bar=True)
-            self.fid.reset()
+        fid_score = self.fid.compute().item()
+        self.log("train/FID", fid_score)
+        print(f"FID Score: {fid_score}")
+        self.fid.reset()
 
     def configure_optimizers(self):
         optimizer_G = torch.optim.Adam(

@@ -111,8 +111,7 @@ class CGAN(pl.LightningModule):
 
         # if self.current_epoch % 10 == 0 and self.current_epoch != 0:
         norm_gen_fences = preprocess_for_fid(generated_fences)
-        print("Test", norm_gen_fences.dtype)
-        self.fid.update(norm_gen_fences.to(torch.float32), real=False)
+        self.fid.update(norm_gen_fences, real=False)
 
     def on_train_epoch_end(self):
         if self.current_epoch % 50 == 0 and self.current_epoch != 0:

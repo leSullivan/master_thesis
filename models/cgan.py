@@ -109,15 +109,25 @@ class CGAN(pl.LightningModule):
         self.manual_backward(loss_D)
         optimizer_D.step()
 
-        # if self.current_epoch % 10 == 0 and self.current_epoch != 0:
-        norm_gen_fences = preprocess_for_fid(generated_fences)
-        self.fid.update(norm_gen_fences, real=False)
+        if self.current_epoch % 20 == 0 and self.current_epoch != 0:
+            norm_gen_fences = preprocess_for_fid(generated_fences)
+            self.fid.update(norm_gen_fences, real=False)
 
     def on_train_epoch_end(self):
-        # if self.current_epoch % 50 == 0 and self.current_epoch != 0:
         val_dataloader = self.trainer.datamodule.val_dataloader()
-        batch = next(iter(val_dataloader))
-        bg_imgs, fence_imgs = batch["background"], batch["fence"]
+        loader_A = val_dataloader["background"]
+        loader_B = val_dataloader["fence"]
+
+        for batch_A, batch_B in zip(loader_A, loader_B):
+            bg_imgs, fence_imgs = batch_A, batch_B
+
+            fake_fence_imgs = self.generator(bg_imgs)
+
+            grid = make_grid(
+                torch.cat((bg_imgs, fake_fence_imgs, fence_imgs), dim=0),
+                nrow=4,
+                normalize=True,
+            )
 
         fake_fence_imgs = self.generator(bg_imgs)
 
@@ -129,11 +139,10 @@ class CGAN(pl.LightningModule):
 
         self.logger.experiment.add_image("Generated_Images", grid, self.current_epoch)
 
-        # if self.current_epoch % 10 == 0 and self.current_epoch != 0:
-
-        fid_score = self.fid.compute().item()
-        self.log("train/FID", fid_score, on_epoch=True)
-        self.fid.reset()
+        if self.current_epoch % 20 == 0 and self.current_epoch != 0:
+            fid_score = self.fid.compute().item()
+            self.log("train/FID", fid_score, on_epoch=True)
+            self.fid.reset()
 
     def configure_optimizers(self):
         optimizer_G = torch.optim.Adam(

@@ -35,8 +35,6 @@ class CGAN(pl.LightningModule):
             n_downsampling=n_downsampling,
             norm_type=norm_type,
             generator_type=generator_type,
-            output_h=img_h,
-            output_w=img_w,
         )
         self.discriminator = Discriminator(
             ndf=ndf,

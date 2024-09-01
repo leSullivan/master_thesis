@@ -37,6 +37,8 @@ def main(args):
     data_module = UnpairedImageDataModule(
         batch_size=args.batch_size,
         num_workers=NUM_WORKERS,
+        img_h=args.img_h,
+        img_w=args.img_w,
     )
 
     if args.model_name.lower() == "cgan":

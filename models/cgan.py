@@ -114,13 +114,22 @@ class CGAN(pl.LightningModule):
             self.fid.update(norm_gen_fences, real=False)
 
     def on_train_epoch_end(self):
-        val_dataloader = self.trainer.datamodule.val_dataloader()
-        loader_A = val_dataloader["background"]
-        loader_B = val_dataloader["fence"]
+        if self.current_epoch % 50 == 0 and self.current_epoch != 0:
+            val_dataloader = self.trainer.datamodule.val_dataloader()
+            loader_A = val_dataloader["background"]
+            loader_B = val_dataloader["fence"]
 
-        for batch_A, batch_B in zip(loader_A, loader_B):
-            bg_imgs = batch_A.to(self.device)
-            fence_imgs = batch_B.to(self.device)
+            for batch_A, batch_B in zip(loader_A, loader_B):
+                bg_imgs = batch_A.to(self.device)
+                fence_imgs = batch_B.to(self.device)
+
+                fake_fence_imgs = self.generator(bg_imgs)
+
+                grid = make_grid(
+                    torch.cat((bg_imgs, fake_fence_imgs, fence_imgs), dim=0),
+                    nrow=4,
+                    normalize=True,
+                )
 
             fake_fence_imgs = self.generator(bg_imgs)
 
@@ -130,15 +139,9 @@ class CGAN(pl.LightningModule):
                 normalize=True,
             )
 
-        fake_fence_imgs = self.generator(bg_imgs)
-
-        grid = make_grid(
-            torch.cat((bg_imgs, fake_fence_imgs, fence_imgs), dim=0),
-            nrow=4,
-            normalize=True,
-        )
-
-        self.logger.experiment.add_image("Generated_Images", grid, self.current_epoch)
+            self.logger.experiment.add_image(
+                "Generated_Images", grid, self.current_epoch
+            )
 
         if self.current_epoch % 20 == 0 and self.current_epoch != 0:
             fid_score = self.fid.compute().item()

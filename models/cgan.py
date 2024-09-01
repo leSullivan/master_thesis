@@ -119,7 +119,8 @@ class CGAN(pl.LightningModule):
         loader_B = val_dataloader["fence"]
 
         for batch_A, batch_B in zip(loader_A, loader_B):
-            bg_imgs, fence_imgs = batch_A, batch_B
+            bg_imgs = batch_A.to(self.device)
+            fence_imgs = batch_B.to(self.device)
 
             fake_fence_imgs = self.generator(bg_imgs)
 

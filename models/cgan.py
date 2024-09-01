@@ -109,9 +109,10 @@ class CGAN(pl.LightningModule):
         self.manual_backward(loss_D)
         optimizer_D.step()
 
-        if self.current_epoch % 10 == 0 and self.current_epoch != 0:
-            norm_gen_fences = preprocess_for_fid(generated_fences)
-            self.fid.update(norm_gen_fences.to(torch.float32), real=False)
+        # if self.current_epoch % 10 == 0 and self.current_epoch != 0:
+        norm_gen_fences = preprocess_for_fid(generated_fences)
+        print("Test", norm_gen_fences.dtype)
+        self.fid.update(norm_gen_fences.to(torch.float32), real=False)
 
     def on_train_epoch_end(self):
         if self.current_epoch % 50 == 0 and self.current_epoch != 0:

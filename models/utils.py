@@ -13,6 +13,6 @@ def get_norm_layer(norm_type):
     return norm_layer
 
 
-def normalize_tensor(x):
+def preprocess_for_fid(x):
     normalized = (x + 1) / 2
-    return normalized.to(torch.float32)
+    return (normalized * 255).byte()

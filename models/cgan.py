@@ -5,7 +5,7 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision.utils import make_grid
 
 from models import Generator, Discriminator
-from .utils import normalize_tensor
+from .utils import preprocess_for_fid
 
 
 class CGAN(pl.LightningModule):
@@ -46,9 +46,7 @@ class CGAN(pl.LightningModule):
         self.criterion_gan = self.init_adv_loss()
         self.criterion_identity = nn.L1Loss()
 
-        self.fid = FrechetInceptionDistance(
-            feature=2048, normalize=True, reset_real_features=False
-        )
+        self.fid = FrechetInceptionDistance(reset_real_features=False)
 
         self.automatic_optimization = False
 
@@ -64,7 +62,7 @@ class CGAN(pl.LightningModule):
     def on_train_start(self):
         for fence_imgs in self.trainer.datamodule.train_dataloader()["fence"]:
             fence_imgs = fence_imgs.to(self.device)
-            fence_imgs = normalize_tensor(fence_imgs)
+            fence_imgs = preprocess_for_fid(fence_imgs)
             self.fid.update(fence_imgs, real=True)
 
     def training_step(self, batch, batch_idx):
@@ -114,7 +112,7 @@ class CGAN(pl.LightningModule):
         optimizer_D.step()
 
         if self.current_epoch % 10 == 0 and self.current_epoch != 0:
-            norm_gen_fences = normalize_tensor(generated_fences)
+            norm_gen_fences = preprocess_for_fid(generated_fences)
             self.fid.update(norm_gen_fences.to(torch.float32), real=False)
 
     def on_train_epoch_end(self):

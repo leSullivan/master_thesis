@@ -15,4 +15,4 @@ def get_norm_layer(norm_type):
 
 def normalize_tensor(x):
     normalized = (x + 1) / 2
-    return normalized
+    return normalized.to(torch.float32)

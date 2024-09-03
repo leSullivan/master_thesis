@@ -5,6 +5,7 @@ imgs/training_data
 tb_logs
 
 runs
+.env
 
 **/__pycache__/
 **__pycache__

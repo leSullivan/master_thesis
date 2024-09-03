@@ -24,7 +24,7 @@ class CGAN(pl.LightningModule):
         generator_type,
         ngf,
         n_downsampling,
-        calculate_scores_during_training=False,
+        calculate_scores_during_training,
         *args,
         **kwargs,
     ):
@@ -115,14 +115,13 @@ class CGAN(pl.LightningModule):
         self.manual_backward(loss_D)
         optimizer_D.step()
 
-        self.structure_loss.update_dino_struct_loss(bg_imgs, fence_imgs)
-
         if not self.calculate_scores_during_training:
             return
 
         if self.current_epoch % 20 == 0 and self.current_epoch != 0:
             norm_gen_fences = preprocess_for_fid(generated_fences)
             self.fid.update(norm_gen_fences, real=False)
+            self.structure_loss.update_dino_struct_loss(bg_imgs, fence_imgs)
 
     def on_train_epoch_end(self):
         if self.current_epoch % 50 == 0 and self.current_epoch != 0:
@@ -163,10 +162,9 @@ class CGAN(pl.LightningModule):
             self.log("train/FID", fid_score, on_epoch=True)
             self.fid.reset()
 
-        structure_loss = self.structure_loss.compute()
-        self.log("train/DINO", structure_loss, on_epoch=True)
-        self.structure_loss.reset()
-        print("DINO Loss: ", structure_loss)
+            structure_loss = self.structure_loss.compute()
+            self.log("train/DINO", structure_loss, on_epoch=True)
+            self.structure_loss.reset()
 
     def configure_optimizers(self):
         optimizer_G = torch.optim.Adam(

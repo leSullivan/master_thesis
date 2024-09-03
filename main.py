@@ -101,6 +101,11 @@ if __name__ == "__main__":
         default=MODEL_TYPE,
     )
     parser.add_argument(
+        "--calculate_scores_during_training",
+        type=str,
+        default=os.getenv("CALC_SCORES", True),
+    )
+    parser.add_argument(
         "--img-w",
         type=int,
         default=IMG_W,

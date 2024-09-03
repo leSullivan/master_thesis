@@ -24,6 +24,7 @@ class CGAN(pl.LightningModule):
         generator_type,
         ngf,
         n_downsampling,
+        calculate_scores_during_training=False,
         *args,
         **kwargs,
     ):
@@ -49,6 +50,8 @@ class CGAN(pl.LightningModule):
         self.fid = FrechetInceptionDistance(reset_real_features=False)
         self.structure_loss = DinoStructureLoss(device=self.device)
 
+        self.calculate_scores_during_training = calculate_scores_during_training
+
         self.automatic_optimization = False
 
     def forward(self, x):
@@ -61,6 +64,8 @@ class CGAN(pl.LightningModule):
             return nn.MSELoss()
 
     def on_train_start(self):
+        if not self.calculate_scores_during_training:
+            return
         for fence_imgs in self.trainer.datamodule.train_dataloader()["fence"]:
             fence_imgs = fence_imgs.to(self.device)
             fence_imgs = preprocess_for_fid(fence_imgs)
@@ -110,12 +115,14 @@ class CGAN(pl.LightningModule):
         self.manual_backward(loss_D)
         optimizer_D.step()
 
+        self.structure_loss.update_dino_struct_loss(bg_imgs, fence_imgs)
+
+        if not self.calculate_scores_during_training:
+            return
+
         if self.current_epoch % 20 == 0 and self.current_epoch != 0:
             norm_gen_fences = preprocess_for_fid(generated_fences)
             self.fid.update(norm_gen_fences, real=False)
-
-        self.structure_loss.update_dino_struct_loss(bg_imgs, fence_imgs)
-            
 
     def on_train_epoch_end(self):
         if self.current_epoch % 50 == 0 and self.current_epoch != 0:
@@ -147,12 +154,19 @@ class CGAN(pl.LightningModule):
                 "Generated_Images", grid, self.current_epoch
             )
 
-        if self.current_epoch % 20 == 0 and self.current_epoch != 0:
+        if (
+            self.current_epoch % 20 == 0
+            and self.current_epoch != 0
+            and self.calculate_scores_during_training
+        ):
             fid_score = self.fid.compute().item()
             self.log("train/FID", fid_score, on_epoch=True)
             self.fid.reset()
-        
-        print("Structure Loss: ", self.structure_loss.compute())
+
+        structure_loss = self.structure_loss.compute()
+        self.log("train/DINO", structure_loss, on_epoch=True)
+        self.structure_loss.reset()
+        print("DINO Loss: ", structure_loss)
 
     def configure_optimizers(self):
         optimizer_G = torch.optim.Adam(

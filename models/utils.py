@@ -237,32 +237,38 @@ class DinoStructureLoss:
         self.n = 0
 
         self.extractor = VitExtractor(model_name="dino_vitb8", device=device)
-        self.preprocess = torchvision.transforms.Compose(
-            [
-                torchvision.transforms.Resize(224),
-                torchvision.transforms.ToTensor(),
-                torchvision.transforms.Normalize(
-                    (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
-                ),
-            ]
+
+    def preprocess(x):
+        x = F.interpolate(
+            x.unsqueeze(0), size=(224, 224), mode="bilinear", align_corners=False
+        ).squeeze(0)
+
+        x = (x + 1) / 2
+
+        normalize = torchvision.transforms.Normalize(
+            mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
         )
+
+        return normalize(x)
 
     def update_dino_struct_loss(self, inputs, outputs):
 
-        assert len(inputs) == len(
-            outputs
+        assert (
+            inputs.shape == outputs.shape
         ), "DINO Struct: Input and output lengths do not match"
 
-        inputs = [self.preprocess(i) for i in inputs]
-        outputs = [self.preprocess(i) for i in outputs]
+        inputs = self.preprocess(inputs)
+        outputs = self.preprocess(outputs)
 
-        for a, b in zip(inputs, outputs):  # avoid memory limitations
+        batch_size = inputs.size(0)
+
+        for i in range(batch_size):
             with torch.no_grad():
                 target_keys_self_sim = self.extractor.get_keys_self_sim_from_input(
-                    a.unsqueeze(0), layer_num=11
+                    inputs[i].unsqueeze(0), layer_num=11
                 )
             keys_ssim = self.extractor.get_keys_self_sim_from_input(
-                b.unsqueeze(0), layer_num=11
+                outputs[i].unsqueeze(0), layer_num=11
             )
             self.loss += F.mse_loss(keys_ssim, target_keys_self_sim)
             self.n += 1

@@ -238,7 +238,7 @@ class DinoStructureLoss:
 
         self.extractor = VitExtractor(model_name="dino_vitb8", device=device)
 
-    def preprocess(x):
+    def preprocess(self, x):
         x = F.interpolate(
             x.unsqueeze(0), size=(224, 224), mode="bilinear", align_corners=False
         ).squeeze(0)

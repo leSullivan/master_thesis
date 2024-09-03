@@ -23,7 +23,8 @@ from src.config import (
     IMG_W,
     NDF,
     NGF,
-    N_DOWNSAMPLING,
+    N_DOWNSAMPLING_RES_NET,
+    N_DOWNSAMPLING_U_NET,
     NORM_TYPE,
     DISCRIMINATOR_TYPE,
     GENERATOR_TYPE,
@@ -129,7 +130,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--n_downsampling",
         type=int,
-        default=N_DOWNSAMPLING,
+        default=(
+            N_DOWNSAMPLING_RES_NET
+            if GENERATOR_TYPE == "resnet"
+            else N_DOWNSAMPLING_U_NET
+        ),
     )
 
     # discriminator

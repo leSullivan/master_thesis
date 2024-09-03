@@ -5,7 +5,7 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision.utils import make_grid
 
 from models import Generator, Discriminator
-from .utils import preprocess_for_fid
+from .utils import preprocess_for_fid, DinoStructureLoss
 
 
 class CGAN(pl.LightningModule):
@@ -47,6 +47,7 @@ class CGAN(pl.LightningModule):
         self.criterion_identity = nn.L1Loss()
 
         self.fid = FrechetInceptionDistance(reset_real_features=False)
+        self.structure_loss = DinoStructureLoss(device=self.device)
 
         self.automatic_optimization = False
 
@@ -66,21 +67,21 @@ class CGAN(pl.LightningModule):
             self.fid.update(fence_imgs, real=True)
 
     def training_step(self, batch, batch_idx):
-        bg_img, fence_imgs = batch["background"], batch["fence"]
+        bg_imgs, fence_imgs = batch["background"], batch["fence"]
 
         optimizer_G, optimizer_D = self.optimizers()
 
-        generated_fences = self.generator(bg_img)
+        generated_fences = self.generator(bg_imgs)
 
         pred_fake = self.discriminator(generated_fences)
 
         loss_adv = self.criterion_gan(pred_fake, torch.ones_like(pred_fake))
-        loss_L1 = self.criterion_identity(generated_fences, bg_img)
+        loss_l1 = self.criterion_identity(generated_fences, bg_imgs)
 
-        loss_G = loss_adv + self.hparams.lamba_identity * loss_L1
+        loss_G = loss_adv + self.hparams.lamba_identity * loss_l1
 
         self.log("train/_loss_adv", loss_adv, on_step=True, on_epoch=True)
-        self.log("train/_loss_L1", loss_L1, on_step=True, on_epoch=True)
+        self.log("train/_loss_L1", loss_l1, on_step=True, on_epoch=True)
         self.log(
             "train/_loss_G",
             loss_G,
@@ -112,6 +113,9 @@ class CGAN(pl.LightningModule):
         if self.current_epoch % 20 == 0 and self.current_epoch != 0:
             norm_gen_fences = preprocess_for_fid(generated_fences)
             self.fid.update(norm_gen_fences, real=False)
+
+        self.structure_loss.update_dino_struct_loss(bg_imgs, fence_imgs)
+            
 
     def on_train_epoch_end(self):
         if self.current_epoch % 50 == 0 and self.current_epoch != 0:
@@ -147,6 +151,8 @@ class CGAN(pl.LightningModule):
             fid_score = self.fid.compute().item()
             self.log("train/FID", fid_score, on_epoch=True)
             self.fid.reset()
+        
+        print("Structure Loss: ", self.structure_loss.compute())
 
     def configure_optimizers(self):
         optimizer_G = torch.optim.Adam(

@@ -11,12 +11,6 @@ from .utils import preprocess_for_fid, DinoStructureLoss
 class CGAN(pl.LightningModule):
     def __init__(
         self,
-        lr,
-        beta1,
-        beta2,
-        img_h,
-        img_w,
-        lamba_identity,
         norm_type,
         discriminator_type,
         ndf,

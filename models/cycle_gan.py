@@ -8,7 +8,7 @@ from models import Generator, Discriminator  # Bgssuming you have defined these 
 from .utils import preprocess_for_fid, DinoStructureLoss
 
 
-class CycleGBgN(pl.LightningModule):
+class CycleGAN(pl.LightningModule):
     def __init__(
         self,
         norm_type,

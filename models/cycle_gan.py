@@ -4,173 +4,238 @@ import pytorch_lightning as pl
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision.utils import make_grid
 
-from models import Generator, Discriminator
+from models import Generator, Discriminator  # Bgssuming you have defined these already
+from .utils import preprocess_for_fid, DinoStructureLoss
 
 
-class CycleGAN(pl.LightningModule):
+class CycleGBgN(pl.LightningModule):
     def __init__(
         self,
-        lr,
-        beta1,
-        beta2,
+        norm_type,
+        discriminator_type,
+        ndf,
+        nd_layers,
+        generator_type,
+        ngf,
+        n_downsampling,
         lambda_cycle,
         lambda_identity,
-        norm_type,
-        ngf,
-        ndf,
-        n_downsampling,
-        nd_layers,
+        calculate_scores_during_training,
         *args,
         **kwargs,
     ):
         super().__init__()
         self.save_hyperparameters()
 
-        # Generators
-        self.G_A2B = Generator(ngf, n_downsampling, norm_type)
-        self.G_B2A = Generator(ngf, n_downsampling, norm_type)
+        self.generator_Bg2Fence = Generator(
+            ngf=ngf,
+            n_downsampling=n_downsampling,
+            norm_type=norm_type,
+            generator_type=generator_type,
+        )
+        self.generator_Fence2Bg = Generator(
+            ngf=ngf,
+            n_downsampling=n_downsampling,
+            norm_type=norm_type,
+            generator_type=generator_type,
+        )
 
-        # Discriminators
-        self.D_A = Discriminator(ndf, nd_layers, norm_type)
-        self.D_B = Discriminator(ndf, nd_layers, norm_type)
+        self.discriminator_Bg = Discriminator(
+            ndf=ndf,
+            nd_layers=nd_layers,
+            norm_type=norm_type,
+            discriminator_type=discriminator_type,
+        )
+        self.discriminator_Fence = Discriminator(
+            ndf=ndf,
+            nd_layers=nd_layers,
+            norm_type=norm_type,
+            discriminator_type=discriminator_type,
+        )
 
-        # Loss functions
-        self.criterion_gan = nn.MSELoss()
+        self.criterion_gan = self.init_adv_loss()
         self.criterion_cycle = nn.L1Loss()
         self.criterion_identity = nn.L1Loss()
 
-        # FID metric
-        self.fid = FrechetInceptionDistance(feature=2048)
-        self.fid_real_A = []
-        self.fid_fake_A = []
-        self.fid_real_B = []
-        self.fid_fake_B = []
+        self.lambda_cycle = lambda_cycle
+        self.lambda_identity = lambda_identity
 
+        self.fid = FrechetInceptionDistance(reset_real_features=False)
+        self.structure_loss = DinoStructureLoss(device=self.device)
+
+        self.calculate_scores_during_training = calculate_scores_during_training
         self.automatic_optimization = False
 
-    def forward(self, x):
-        return self.G_A2B(x)
+    def forward(self, x, direction="Bg2Fence"):
+        if direction == "Bg2Fence":
+            return self.generator_Bg2Fence(x)
+        else:
+            return self.generator_Fence2Bg(x)
+
+    def init_adv_loss(self):
+        if self.hparams["discriminator_type"] == "basic":
+            return nn.BCELoss()
+        else:
+            return nn.MSELoss()
 
     def training_step(self, batch, batch_idx):
-        real_A, real_B = batch["A"], batch["B"]
+        bg_imgs, fence_imgs = batch["background"], batch["fence"]
+        optimizer_G, optimizer_D = self.optimizers()
 
-        opt_G, opt_D = self.optimizers()
+        fake_fences = self.generator_Bg2Fence(bg_imgs)
+        fake_bgs = self.generator_Fence2Bg(fence_imgs)
 
-        # Generate fake images
-        fake_B = self.G_A2B(real_A)
-        fake_A = self.G_B2A(real_B)
+        rec_fences = self.generator_Bg2Fence(fake_bgs)
+        rec_bgs = self.generator_Fence2Bg(fake_fences)
 
-        # Train Generators
-        # Identity loss
-        identity_A = self.G_B2A(real_A)
-        identity_B = self.G_A2B(real_B)
-        loss_identity_A = self.criterion_identity(identity_A, real_A)
-        loss_identity_B = self.criterion_identity(identity_B, real_B)
+        # cycle loss
+        loss_cycle_bg = self.criterion_cycle(rec_bgs, bg_imgs)
+        loss_cycle_fence = self.criterion_cycle(rec_fences, fence_imgs)
+        loss_cycle = loss_cycle_bg + loss_cycle_fence
 
-        # GAN loss
-        pred_fake_B = self.D_B(fake_B)
-        loss_GAN_A2B = self.criterion_gan(pred_fake_B, torch.ones_like(pred_fake_B))
-        pred_fake_A = self.D_A(fake_A)
-        loss_GAN_B2A = self.criterion_gan(pred_fake_A, torch.ones_like(pred_fake_A))
+        self.log("loss_cycle", loss_cycle, on_step=True, on_epoch=True)
 
-        # Cycle loss
-        recovered_A = self.G_B2A(fake_B)
-        loss_cycle_ABA = self.criterion_cycle(recovered_A, real_A)
-        recovered_B = self.G_A2B(fake_A)
-        loss_cycle_BAB = self.criterion_cycle(recovered_B, real_B)
+        # identity loss
+        loss_identity_bg = self.criterion_identity(
+            self.generator_Fence2Bg(bg_imgs), bg_imgs
+        )
+        loss_identity_fence = self.criterion_identity(
+            self.generator_Bg2Fence(fence_imgs), fence_imgs
+        )
+        loss_identity = loss_identity_bg + loss_identity_fence
 
-        # Total generator loss
+        self.log(
+            "loss_identity",
+            loss_identity,
+            on_step=True,
+            on_epoch=True,
+        )
+
+        # adversarial loss
+        pred_fake_fence = self.discriminator_Fence(fake_fences)
+        loss_gan_Bg2Fence = self.criterion_gan(
+            pred_fake_fence, torch.ones_like(pred_fake_fence)
+        )
+        self.log(
+            "loss_adv_Bg2Fence",
+            loss_gan_Bg2Fence,
+            prog_bar=True,
+            on_step=True,
+            on_epoch=True,
+        )
+
+        pred_fake_bg = self.discriminator_Bg(fake_bgs)
+        loss_gan_Fence2Bg = self.criterion_gan(
+            pred_fake_bg, torch.ones_like(pred_fake_bg)
+        )
+        self.log(
+            "loss_adv_Fence2Bg",
+            loss_gan_Fence2Bg,
+            prog_bar=True,
+            on_step=True,
+            on_epoch=True,
+        )
+
         loss_G = (
-            loss_GAN_A2B
-            + loss_GAN_B2A
-            + self.hparams.lambda_cycle * (loss_cycle_ABA + loss_cycle_BAB)
-            + self.hparams.lambda_identity * (loss_identity_A + loss_identity_B)
+            loss_gan_Bg2Fence
+            + loss_gan_Fence2Bg
+            + self.lambda_cycle * loss_cycle
+            + self.lambda_identity * loss_identity
         )
 
-        self.log("train/loss_G", loss_G, prog_bar=True, on_step=True, on_epoch=True)
+        self.log("loss_G", loss_G, prog_bar=True, on_step=True, on_epoch=True)
 
-        opt_G.zero_grad()
+        optimizer_G.zero_grad()
         self.manual_backward(loss_G)
-        opt_G.step()
+        optimizer_G.step()
 
-        # Train Discriminators
-        # Discriminator A
-        pred_real_A = self.D_A(real_A)
-        loss_D_real_A = self.adversarial_loss(pred_real_A, torch.ones_like(pred_real_A))
-        pred_fake_A = self.D_A(fake_A.detach())
-        loss_D_fake_A = self.adversarial_loss(
-            pred_fake_A, torch.zeros_like(pred_fake_A)
+        # ----------------------------------------------------------------------------------
+
+        pred_bg_imgs = self.discriminator_Bg(bg_imgs)
+        pred_fake_bg = self.discriminator_Bg(fake_bgs.detach())
+        loss_D_bg_imgs = self.criterion_gan(pred_bg_imgs, torch.ones_like(pred_bg_imgs))
+        loss_D_fake_bg = self.criterion_gan(
+            pred_fake_bg, torch.zeros_like(pred_fake_bg)
         )
-        loss_D_A = (loss_D_real_A + loss_D_fake_A) * 0.5
+        loss_D_Bg = (loss_D_bg_imgs + loss_D_fake_bg) / 2
 
-        # Discriminator B
-        pred_real_B = self.D_B(real_B)
-        loss_D_real_B = self.adversarial_loss(pred_real_B, torch.ones_like(pred_real_B))
-        pred_fake_B = self.D_B(fake_B.detach())
-        loss_D_fake_B = self.adversarial_loss(
-            pred_fake_B, torch.zeros_like(pred_fake_B)
+        self.log("loss_D_Bg", loss_D_Bg, on_step=True, on_epoch=True)
+
+        pred_fence_imgs = self.discriminator_Fence(fence_imgs)
+        pred_fake_fence = self.discriminator_Fence(fake_fences.detach())
+        loss_D_fence_imgs = self.criterion_gan(
+            pred_fence_imgs, torch.ones_like(pred_fence_imgs)
         )
-        loss_D_B = (loss_D_real_B + loss_D_fake_B) * 0.5
+        loss_D_fake_fence = self.criterion_gan(
+            pred_fake_fence, torch.zeros_like(pred_fake_fence)
+        )
+        loss_D_Fence = (loss_D_fence_imgs + loss_D_fake_fence) / 2
 
-        # Total discriminator loss
-        loss_D = loss_D_A + loss_D_B
+        self.log("loss_D_Fence", loss_D_Fence, on_step=True, on_epoch=True)
 
-        self.log("train/loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True)
+        loss_D = loss_D_Bg + loss_D_Fence
 
-        opt_D.zero_grad()
+        self.log("loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True)
+
+        optimizer_D.zero_grad()
         self.manual_backward(loss_D)
-        opt_D.step()
+        optimizer_D.step()
+
+        if not self.calculate_scores_during_training:
+            return
+
+        if self.current_epoch % 20 == 0 and self.current_epoch != 0:
+            norm_fake_fence = preprocess_for_fid(fake_fences)
+            self.fid.update(norm_fake_fence, real=False)
+            self.structure_loss.update_dino_struct_loss(bg_imgs, fake_fences)
 
     def on_train_epoch_end(self):
         if self.current_epoch % 50 == 0 and self.current_epoch != 0:
-            real_A = next(iter(self.trainer.datamodule.train_dataloader()))["A"][:4]
-            real_B = next(iter(self.trainer.datamodule.train_dataloader()))["B"][:4]
-            fake_B = self.G_A2B(real_A)
-            fake_A = self.G_B2A(real_B)
+            val_dataloader = self.trainer.datamodule.val_dataloader()
+            loader_Bg = val_dataloader["background"]
+            loader_Fence = val_dataloader["fence"]
 
-            grid = make_grid(
-                torch.cat((real_A, fake_B, real_B, fake_A), dim=0),
-                nrow=4,
-                normalize=True,
-            )
+            for batch_Bg, batch_Fence in zip(loader_Bg, loader_Fence):
+                bg_imgs = batch_Bg.to(self.device)
+                fence_imgs = batch_Fence.to(self.device)
 
-            self.logger.experiment.add_image(
-                "Generated_Images", grid, self.current_epoch
-            )
+                fake_fence = self.generator_Bg2Fence(bg_imgs)
+                fake_bg = self.generator_Fence2Bg(fence_imgs)
 
-        if self.current_epoch % 10 == 0 and self.current_epoch != 0:
-            real_A = torch.cat(self.fid_real_A)
-            fake_B = torch.cat(self.fid_fake_B)
-            real_B = torch.cat(self.fid_real_B)
-            fake_A = torch.cat(self.fid_fake_A)
+                grid = make_grid(
+                    torch.cat((bg_imgs, fake_fence, fence_imgs, fake_bg), dim=0),
+                    nrow=4,
+                    normalize=True,
+                )
 
-            self.fid.update(real_A, real=True)
-            self.fid.update(fake_B, real=False)
-            fid_score_A2B = self.fid.compute().item()
+                self.logger.experiment.add_image(
+                    "Generated_Images", grid, self.current_epoch
+                )
 
+        if (
+            self.current_epoch % 20 == 0
+            and self.current_epoch != 0
+            and self.calculate_scores_during_training
+        ):
+            fid_score = self.fid.compute().item()
+            self.log("FID", fid_score, on_epoch=True)
             self.fid.reset()
 
-            self.fid.update(real_B, real=True)
-            self.fid.update(fake_A, real=False)
-            fid_score_B2A = self.fid.compute().item()
-
-            self.log("train/FID_A2B", fid_score_A2B, prog_bar=True)
-            self.log("train/FID_B2A", fid_score_B2A, prog_bar=True)
-
-            self.fid_real_A.clear()
-            self.fid_fake_B.clear()
-            self.fid_real_B.clear()
-            self.fid_fake_A.clear()
+            structure_loss = self.structure_loss.compute()
+            self.log("DINO", structure_loss, on_epoch=True)
+            self.structure_loss.reset()
 
     def configure_optimizers(self):
-        opt_G = torch.optim.Adam(
-            list(self.G_A2B.parameters()) + list(self.G_B2A.parameters()),
+        optimizer_G = torch.optim.Adam(
+            list(self.generator_Bg2Fence.parameters())
+            + list(self.generator_Fence2Bg.parameters()),
             lr=self.hparams.lr,
             betas=(self.hparams.beta1, self.hparams.beta2),
         )
-        opt_D = torch.optim.Adam(
-            list(self.D_A.parameters()) + list(self.D_B.parameters()),
+        optimizer_D = torch.optim.Adam(
+            list(self.discriminator_Bg.parameters())
+            + list(self.discriminator_Fence.parameters()),
             lr=self.hparams.lr,
             betas=(self.hparams.beta1, self.hparams.beta2),
         )
-        return [opt_G, opt_D], []
+        return [optimizer_G, optimizer_D], []

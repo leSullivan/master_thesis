@@ -75,12 +75,13 @@ class CGAN(pl.LightningModule):
         pred_fake = self.discriminator(generated_fences)
 
         loss_adv = self.criterion_gan(pred_fake, torch.ones_like(pred_fake))
+        self.log("train/_loss_adv", loss_adv, on_step=True, on_epoch=True)
+
         loss_l1 = self.criterion_identity(generated_fences, bg_imgs)
+        self.log("train/_loss_identity", loss_l1, on_step=True, on_epoch=True)
 
         loss_G = loss_adv + self.hparams.lamba_identity * loss_l1
 
-        self.log("train/_loss_adv", loss_adv, on_step=True, on_epoch=True)
-        self.log("train/_loss_L1", loss_l1, on_step=True, on_epoch=True)
         self.log(
             "train/_loss_G",
             loss_G,
@@ -115,7 +116,7 @@ class CGAN(pl.LightningModule):
         if self.current_epoch % 20 == 0 and self.current_epoch != 0:
             norm_gen_fences = preprocess_for_fid(generated_fences)
             self.fid.update(norm_gen_fences, real=False)
-            self.structure_loss.update_dino_struct_loss(bg_imgs, fence_imgs)
+            self.structure_loss.update_dino_struct_loss(bg_imgs, generated_fences)
 
     def on_train_epoch_end(self):
         if self.current_epoch % 50 == 0 and self.current_epoch != 0:

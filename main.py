@@ -44,7 +44,7 @@ def main(args):
 
     if args.model_name.lower() == "cgan":
         GAN = CGAN(**vars(args))
-    elif args.model_namelower() == "cyclegan":
+    elif args.model_name.lower() == "cyclegan":
         GAN = CycleGAN(**vars(args))
     else:
         raise NotImplementedError(f"Invalid model name: {args.model}")

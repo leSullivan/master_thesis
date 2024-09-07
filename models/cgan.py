@@ -80,7 +80,7 @@ class CGAN(pl.LightningModule):
         loss_l1 = self.criterion_identity(generated_fences, bg_imgs)
         self.log("train/_loss_identity", loss_l1, on_step=True, on_epoch=True)
 
-        loss_G = loss_adv + self.hparams.lamba_identity * loss_l1
+        loss_G = loss_adv + self.hparams["lambda_identity"] * loss_l1
 
         self.log(
             "train/_loss_G",

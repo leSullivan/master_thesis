@@ -119,7 +119,6 @@ class CycleGAN(pl.LightningModule):
         self.log(
             "loss_adv_Bg2Fence",
             loss_gan_Bg2Fence,
-            prog_bar=True,
             on_step=True,
             on_epoch=True,
         )
@@ -131,7 +130,6 @@ class CycleGAN(pl.LightningModule):
         self.log(
             "loss_adv_Fence2Bg",
             loss_gan_Fence2Bg,
-            prog_bar=True,
             on_step=True,
             on_epoch=True,
         )

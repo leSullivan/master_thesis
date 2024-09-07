@@ -24,6 +24,7 @@ LR = 0.0002
 BETA1 = 0.5
 BETA2 = 0.999
 LAMBDA_L1 = 10
+LAMBDA_CYCLE = 10
 
 
 NORM_TYPE = "instance"

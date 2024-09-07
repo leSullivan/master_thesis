@@ -30,6 +30,7 @@ from src.config import (
     GENERATOR_TYPE,
     ND_LAYERS,
     LAMBDA_L1,
+    LAMBDA_CYCLE,
 )
 
 
@@ -164,9 +165,14 @@ if __name__ == "__main__":
     parser.add_argument("--beta1", type=float, default=BETA1)
     parser.add_argument("--beta2", type=float, default=BETA2)
     parser.add_argument(
-        "--lamba_identity",
+        "--lambda_identity",
         type=float,
         default=LAMBDA_L1,
+    )
+    parser.add_argument(
+        "--lambda_cycle",
+        type=float,
+        default=LAMBDA_CYCLE,
     )
 
     # checkpoint

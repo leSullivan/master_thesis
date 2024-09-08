@@ -29,7 +29,7 @@ class Generator(nn.Module):
         if generator_type == "resnet-6":
             self.model = ResNetGenerator(ngf, n_downsampling, norm_layer, input_nc)
 
-        if generator_type == "resnet-9":
+        elif generator_type == "resnet-9":
             self.model = ResNetGenerator(
                 ngf, n_downsampling, norm_layer, input_nc, n_blocks=9
             )

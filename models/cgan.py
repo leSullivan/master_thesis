@@ -77,10 +77,10 @@ class CGAN(pl.LightningModule):
 
         pred_fake = self.discriminator(generated_fences)
 
-        loss_adv = self.criterion_gan(pred_fake, torch.ones_like(pred_fake))
-        self.log("loss_adv", loss_adv, on_step=True, on_epoch=True)
+        loss_gan = self.criterion_gan(pred_fake, torch.ones_like(pred_fake))
+        self.log("loss_adv", loss_gan, on_step=True, on_epoch=True)
 
-        loss_G = loss_adv
+        loss_G = loss_gan * self.hparams["lambda_gan"]
 
         if self.hparams["lambda_identity"] > 0:
             loss_l1 = self.criterion_identity(generated_fences)
@@ -106,14 +106,17 @@ class CGAN(pl.LightningModule):
 
         pred_real = self.discriminator(fence_imgs)
         loss_real = self.criterion_gan(pred_real, torch.ones_like(pred_real))
+        self.log("loss_D_real", loss_real, on_step=True, on_epoch=True)
 
         pred_fake = self.discriminator(generated_fences.detach())
         loss_fake = self.criterion_gan(pred_fake, torch.zeros_like(pred_fake))
-
-        loss_D = (loss_real + loss_fake) / 2
-
-        self.log("loss_D_real", loss_real, on_step=True, on_epoch=True)
         self.log("loss_D_fake", loss_fake, on_step=True, on_epoch=True)
+
+        loss_D = (
+            loss_real * self.hparams["lambda_gan"]
+            + loss_fake * self.hparams["lambda_gan"]
+        ) / 2
+
         self.log("loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True)
 
         optimizer_D.zero_grad()

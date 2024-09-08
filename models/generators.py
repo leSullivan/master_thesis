@@ -18,7 +18,7 @@ class Generator(nn.Module):
         ngf,
         n_downsampling,
         norm_type,
-        generator_type,
+        g_type,
         device,
         input_nc=IMG_CH,
     ):
@@ -26,15 +26,15 @@ class Generator(nn.Module):
 
         norm_layer = get_norm_layer(norm_type)
 
-        if generator_type == "resnet-6":
+        if g_type == "resnet-6":
             self.model = ResNetGenerator(ngf, n_downsampling, norm_layer, input_nc)
 
-        elif generator_type == "resnet-9":
+        elif g_type == "resnet-9":
             self.model = ResNetGenerator(
                 ngf, n_downsampling, norm_layer, input_nc, n_blocks=9
             )
 
-        elif generator_type == "unet":
+        elif g_type == "unet":
             self.model = UNetGenerator(
                 input_nc,
                 input_nc,
@@ -44,7 +44,7 @@ class Generator(nn.Module):
                 use_dropout=False,
             )
 
-        elif generator_type == "unet-dropout":
+        elif g_type == "unet-dropout":
             self.model = UNetGenerator(
                 input_nc,
                 input_nc,
@@ -54,13 +54,13 @@ class Generator(nn.Module):
                 use_dropout=True,
             )
 
-        elif generator_type == "diffusion":
+        elif g_type == "diffusion":
             self.model = SDTurboGenerator(
                 device=device,
             )
 
         else:
-            raise ValueError(f"Generator type '{generator_type}' is not recognized.")
+            raise ValueError(f"Generator type '{g_type}' is not recognized.")
 
     def forward(self, x):
         output = self.model.forward(x)

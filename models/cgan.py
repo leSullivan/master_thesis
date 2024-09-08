@@ -13,10 +13,10 @@ class CGAN(pl.LightningModule):
     def __init__(
         self,
         norm_type,
-        discriminator_type,
+        d_type,
         ndf,
         nd_layers,
-        generator_type,
+        g_type,
         ngf,
         n_downsampling,
         calculate_scores_during_training,
@@ -30,17 +30,18 @@ class CGAN(pl.LightningModule):
             ngf=ngf,
             n_downsampling=n_downsampling,
             norm_type=norm_type,
-            generator_type=generator_type,
+            g_type=g_type,
             device=self.device,
         )
         self.discriminator = Discriminator(
             ndf=ndf,
             nd_layers=nd_layers,
             norm_type=norm_type,
-            discriminator_type=discriminator_type,
+            d_type=d_type,
+            d_use_sigmoid=False,
         )
 
-        self.criterion_gan = self.init_adv_loss()
+        self.criterion_gan = nn.BCELoss()
         self.criterion_identity = nn.L1Loss()
         self.criterion_perceptual = (
             lpips.LPIPS(net="vgg").to(self.device).requires_grad_(False)
@@ -51,16 +52,15 @@ class CGAN(pl.LightningModule):
 
         self.calculate_scores_during_training = calculate_scores_during_training
 
+        self.use_bce_loss = (
+            self.hparams["d_type"] == "basic"
+            or self.hparams["d_use_sigmoid"] == True
+        )
+
         self.automatic_optimization = False
 
     def forward(self, x):
         return self.generator(x)
-
-    def init_adv_loss(self):
-        if self.hparams["discriminator_type"] == "basic":
-            return nn.BCELoss()
-        else:
-            return nn.MSELoss()
 
     def on_train_start(self):
         if not self.calculate_scores_during_training:
@@ -78,8 +78,10 @@ class CGAN(pl.LightningModule):
         generated_fences = self.generator(bg_imgs)
 
         pred_fake = self.discriminator(generated_fences)
-
-        loss_gan = self.criterion_gan(pred_fake, torch.ones_like(pred_fake))
+        if self.use_bce_loss:
+            loss_gan = self.criterion_gan(pred_fake, torch.ones_like(pred_fake))
+        else:
+            loss_gan = pred_fake.mean()
         self.log("loss_adv", loss_gan, on_step=True, on_epoch=True)
 
         loss_G = loss_gan * self.hparams["lambda_gan"]
@@ -109,11 +111,16 @@ class CGAN(pl.LightningModule):
         optimizer_G.step()
 
         pred_real = self.discriminator(fence_imgs)
-        loss_real = self.criterion_gan(pred_real, torch.ones_like(pred_real))
-        self.log("loss_D_real", loss_real, on_step=True, on_epoch=True)
-
         pred_fake = self.discriminator(generated_fences.detach())
-        loss_fake = self.criterion_gan(pred_fake, torch.zeros_like(pred_fake))
+
+        if self.use_bce_loss:
+            loss_real = self.criterion_gan(pred_real, torch.ones_like(pred_real))
+            loss_fake = self.criterion_gan(pred_fake, torch.zeros_like(pred_fake))
+        else:
+            loss_real = pred_real.mean()
+            loss_fake = pred_fake.mean()
+
+        self.log("loss_D_real", loss_real, on_step=True, on_epoch=True)
         self.log("loss_D_fake", loss_fake, on_step=True, on_epoch=True)
 
         loss_D = (

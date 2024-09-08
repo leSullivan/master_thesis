@@ -26,8 +26,9 @@ from src.config import (
     N_DOWNSAMPLING_RES_NET,
     N_DOWNSAMPLING_U_NET,
     NORM_TYPE,
-    DISCRIMINATOR_TYPE,
-    GENERATOR_TYPE,
+    D_TYPE,
+    D_USE_SIGMOID,
+    G_TYPE,
     ND_LAYERS,
     LAMBDA_L1,
     LAMBDA_CYCLE,
@@ -127,9 +128,9 @@ if __name__ == "__main__":
 
     # generator
     parser.add_argument(
-        "--generator_type",
+        "--g_type",
         type=str,
-        default=GENERATOR_TYPE,
+        default=G_TYPE,
     )
 
     parser.add_argument(
@@ -140,17 +141,15 @@ if __name__ == "__main__":
         "--n_downsampling",
         type=int,
         default=(
-            N_DOWNSAMPLING_RES_NET
-            if GENERATOR_TYPE == "resnet"
-            else N_DOWNSAMPLING_U_NET
+            N_DOWNSAMPLING_RES_NET if G_TYPE == "resnet" else N_DOWNSAMPLING_U_NET
         ),
     )
 
     # discriminator
     parser.add_argument(
-        "--discriminator_type",
+        "--d_type",
         type=str,
-        default=DISCRIMINATOR_TYPE,
+        default=D_TYPE,
     )
 
     parser.add_argument("--ndf", type=int, default=NDF)
@@ -159,6 +158,11 @@ if __name__ == "__main__":
         "--nd_layers",
         type=str,
         default=ND_LAYERS,
+    )
+    parser.add_argument(
+        "--d_use_sigmoid",
+        type=bool,
+        default=D_USE_SIGMOID,
     )
 
     # training

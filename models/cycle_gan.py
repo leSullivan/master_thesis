@@ -13,10 +13,10 @@ class CycleGAN(pl.LightningModule):
     def __init__(
         self,
         norm_type,
-        discriminator_type,
+        d_type,
         ndf,
         nd_layers,
-        generator_type,
+        g_type,
         ngf,
         n_downsampling,
         lambda_cycle,
@@ -32,26 +32,26 @@ class CycleGAN(pl.LightningModule):
             ngf=ngf,
             n_downsampling=n_downsampling,
             norm_type=norm_type,
-            generator_type=generator_type,
+            g_type=g_type,
         )
         self.generator_Fence2Bg = Generator(
             ngf=ngf,
             n_downsampling=n_downsampling,
             norm_type=norm_type,
-            generator_type=generator_type,
+            g_type=g_type,
         )
 
         self.discriminator_Bg = Discriminator(
             ndf=ndf,
             nd_layers=nd_layers,
             norm_type=norm_type,
-            discriminator_type=discriminator_type,
+            d_type=d_type,
         )
         self.discriminator_Fence = Discriminator(
             ndf=ndf,
             nd_layers=nd_layers,
             norm_type=norm_type,
-            discriminator_type=discriminator_type,
+            d_type=d_type,
         )
 
         self.criterion_gan = self.init_adv_loss()
@@ -75,7 +75,7 @@ class CycleGAN(pl.LightningModule):
             return self.generator_Fence2Bg(x)
 
     def init_adv_loss(self):
-        if self.hparams["discriminator_type"] == "basic":
+        if self.hparams["d_type"] == "basic":
             return nn.BCELoss()
         else:
             return nn.MSELoss()

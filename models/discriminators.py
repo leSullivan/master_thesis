@@ -12,14 +12,16 @@ class Discriminator(nn.Module):
         ndf,
         nd_layers,
         norm_type,
-        discriminator_type,
+        d_type,
+        d_use_sigmoid,
         input_channels=IMG_CH,
     ):
         super(Discriminator, self).__init__()
+        self.d_use_sigmoid = d_use_sigmoid
 
         norm_layer = get_norm_layer(norm_type)
 
-        if discriminator_type == "basic":
+        if d_type == "basic":
             self.model = NLayerDiscriminator(
                 ndf,
                 nd_layers,
@@ -28,20 +30,21 @@ class Discriminator(nn.Module):
                 use_patches=False,
             )
 
-        elif discriminator_type == "patch":
+        elif d_type == "patch":
             self.model = NLayerDiscriminator(
                 ndf,
                 nd_layers,
                 norm_layer,
                 input_channels,
+                use_sigmoid=d_use_sigmoid,
             )
 
-        elif discriminator_type == "pixel":
+        elif d_type == "pixel":
             self.model = PixelDiscriminator(input_channels, ndf, norm_layer)
 
         else:
             raise ValueError(
-                f"Discriminator type '{discriminator_type}' is not recognized."
+                f"Discriminator type '{d_type}' is not recognized."
             )
 
     def forward(self, x):

@@ -1,4 +1,5 @@
 import torch
+import lpips
 from torch import nn
 import pytorch_lightning as pl
 from torchmetrics.image.fid import FrechetInceptionDistance
@@ -40,6 +41,7 @@ class CGAN(pl.LightningModule):
 
         self.criterion_gan = self.init_adv_loss()
         self.criterion_identity = nn.L1Loss()
+        self.criterion_perceptual = lpips.LPIPS(net="vgg").to(self.device)
 
         self.fid = FrechetInceptionDistance(reset_real_features=False)
         self.structure_loss = DinoStructureLoss(device=self.device)
@@ -75,15 +77,22 @@ class CGAN(pl.LightningModule):
         pred_fake = self.discriminator(generated_fences)
 
         loss_adv = self.criterion_gan(pred_fake, torch.ones_like(pred_fake))
-        self.log("train/_loss_adv", loss_adv, on_step=True, on_epoch=True)
+        self.log("loss_adv", loss_adv, on_step=True, on_epoch=True)
 
-        loss_l1 = self.criterion_identity(generated_fences, bg_imgs)
-        self.log("train/_loss_identity", loss_l1, on_step=True, on_epoch=True)
+        loss_G = loss_adv
 
-        loss_G = loss_adv + self.hparams["lambda_identity"] * loss_l1
+        if self.hparams["lambda_identity"] > 0:
+            loss_l1 = self.criterion_identity(generated_fences)
+            self.log("loss_identity", loss_l1, on_step=True, on_epoch=True)
+            loss_G += self.hparams["lambda_identity"] * loss_l1
+
+        if self.hparams["lambda_perceptual"] > 0:
+            loss_perception = self.criterion_perceptual()
+            self.log("loss_perceptual", loss_l1, on_step=True, on_epoch=True)
+            loss_G += self.hparams["lambda_perceptual"] * loss_perception
 
         self.log(
-            "train/_loss_G",
+            "loss_G",
             loss_G,
             prog_bar=True,
             on_step=True,
@@ -102,9 +111,9 @@ class CGAN(pl.LightningModule):
 
         loss_D = (loss_real + loss_fake) / 2
 
-        self.log("train/loss_D_real", loss_real, on_step=True, on_epoch=True)
-        self.log("train/loss_D_fake", loss_fake, on_step=True, on_epoch=True)
-        self.log("train/loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True)
+        self.log("loss_D_real", loss_real, on_step=True, on_epoch=True)
+        self.log("loss_D_fake", loss_fake, on_step=True, on_epoch=True)
+        self.log("loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True)
 
         optimizer_D.zero_grad()
         self.manual_backward(loss_D)
@@ -154,20 +163,20 @@ class CGAN(pl.LightningModule):
             and self.calculate_scores_during_training
         ):
             fid_score = self.fid.compute().item()
-            self.log("train/FID", fid_score, on_epoch=True)
+            self.log("FID", fid_score, on_epoch=True)
             self.fid.reset()
 
             structure_loss = self.structure_loss.compute()
-            self.log("train/DINO", structure_loss, on_epoch=True)
+            self.log("DINO", structure_loss, on_epoch=True)
             self.structure_loss.reset()
 
     def configure_optimizers(self):
-        optimizer_G = torch.optim.Adam(
+        optimizer_G = torch.optim.AdamW(
             self.generator.parameters(),
             lr=self.hparams.lr,
             betas=(self.hparams.beta1, self.hparams.beta2),
         )
-        optimizer_D = torch.optim.Adam(
+        optimizer_D = torch.optim.AdamW(
             self.discriminator.parameters(),
             lr=self.hparams.lr,
             betas=(self.hparams.beta1, self.hparams.beta2),

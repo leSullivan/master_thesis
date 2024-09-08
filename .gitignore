@@ -2,6 +2,8 @@ imgs/backgrounds
 imgs/fences
 imgs/training_data
 
+model_summary.py
+
 tb_logs
 
 runs

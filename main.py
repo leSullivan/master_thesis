@@ -31,6 +31,8 @@ from src.config import (
     ND_LAYERS,
     LAMBDA_L1,
     LAMBDA_CYCLE,
+    LAMBDA_GAN,
+    LAMBDA_PERCEPTUAL,
 )
 
 
@@ -173,6 +175,16 @@ if __name__ == "__main__":
         "--lambda_cycle",
         type=float,
         default=LAMBDA_CYCLE,
+    )
+    parser.add_argument(
+        "--lambda_gan",
+        type=float,
+        default=LAMBDA_GAN,
+    )
+    parser.add_argument(
+        "--lambda_perceptual",
+        type=float,
+        default=LAMBDA_PERCEPTUAL,
     )
 
     # checkpoint

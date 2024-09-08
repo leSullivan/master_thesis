@@ -28,7 +28,7 @@ class CycleGAN(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.generator_Bg2Fence = Generator(
+        self.generator_Bg2Fence = UNet(
             ngf=ngf,
             n_downsampling=n_downsampling,
             norm_type=norm_type,

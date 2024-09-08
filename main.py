@@ -103,10 +103,11 @@ if __name__ == "__main__":
         type=str,
         default=MODEL_TYPE,
     )
+    calc_scores = os.getenv("CALC_SCORES", "True")
     parser.add_argument(
         "--calculate_scores_during_training",
         type=str,
-        default=os.getenv("CALC_SCORES", True),
+        default=calc_scores == "True",
     )
     parser.add_argument(
         "--img-w",

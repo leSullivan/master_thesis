@@ -42,7 +42,9 @@ class CGAN(pl.LightningModule):
 
         self.criterion_gan = self.init_adv_loss()
         self.criterion_identity = nn.L1Loss()
-        self.criterion_perceptual = lpips.LPIPS(net="vgg").to(self.device)
+        self.criterion_perceptual = (
+            lpips.LPIPS(net="vgg").to(self.device).requires_grad_(False)
+        )
 
         self.fid = FrechetInceptionDistance(reset_real_features=False)
         self.structure_loss = DinoStructureLoss(device=self.device)
@@ -83,12 +85,14 @@ class CGAN(pl.LightningModule):
         loss_G = loss_gan * self.hparams["lambda_gan"]
 
         if self.hparams["lambda_identity"] > 0:
-            loss_l1 = self.criterion_identity(generated_fences)
+            loss_l1 = self.criterion_identity(bg_imgs, generated_fences)
             self.log("loss_identity", loss_l1, on_step=True, on_epoch=True)
             loss_G += self.hparams["lambda_identity"] * loss_l1
 
         if self.hparams["lambda_perceptual"] > 0:
-            loss_perception = self.criterion_perceptual()
+            loss_perception = self.criterion_perceptual(
+                fence_imgs, generated_fences
+            ).mean()
             self.log("loss_perceptual", loss_l1, on_step=True, on_epoch=True)
             loss_G += self.hparams["lambda_perceptual"] * loss_perception
 

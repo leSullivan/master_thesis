@@ -58,7 +58,9 @@ class Discriminator(nn.Module):
             raise ValueError(f"Discriminator type '{d_type}' is not recognized.")
 
     def forward(self, x, **kwargs):
-        output = self.model(x, kwargs)
+        if self.d_type == "vagan":
+            output = self.model(x, **kwargs)
+        output = self.model(x)
         return output
 
 

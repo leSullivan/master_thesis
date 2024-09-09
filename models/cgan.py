@@ -72,7 +72,7 @@ class CGAN(pl.LightningModule):
 
         optimizer_G, optimizer_D = self.optimizers()
 
-        generated_fences = self.generator(bg_imgs)
+        generated_fences = self.generator(bg_imgs).to(self.device)
 
         pred_fake = self.discriminator(generated_fences)
 

@@ -57,8 +57,8 @@ class CGAN(pl.LightningModule):
 
         self.automatic_optimization = False
 
-    def forward(self, x):
-        return self.generator(x)
+    def forward(self, x, **kwargs):
+        return self.generator(x, **kwargs)
 
     def on_train_start(self):
         if not self.calculate_scores_during_training:

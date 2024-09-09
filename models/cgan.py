@@ -67,13 +67,10 @@ class CGAN(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         bg_imgs, fence_imgs = batch["background"], batch["fence"]
-        print(f"Background images device: {bg_imgs.device}")
-        print(f"Fence images device: {fence_imgs.device}")
 
         optimizer_G, optimizer_D = self.optimizers()
 
         generated_fences = self.generator(bg_imgs)
-        print(f"Generated fences device: {generated_fences.device}")
 
         if self.hparams["d_type"] == "vagan":
             pred_fake = self.discriminator(generated_fences, for_G=True)

@@ -60,6 +60,7 @@ class Discriminator(nn.Module):
             raise ValueError(f"Discriminator type '{d_type}' is not recognized.")
 
     def forward(self, x):
+        x = x.to(self.device)
         output = self.model(x)
         return output
 

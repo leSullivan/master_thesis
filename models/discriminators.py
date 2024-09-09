@@ -54,12 +54,13 @@ class Discriminator(nn.Module):
             )
             self.model.requires_grad_(True)
             self.model.cv_ensemble.requires_grad_(False)
-            self.model.train().to(device)
+            self.model.to(device)
 
         else:
             raise ValueError(f"Discriminator type '{d_type}' is not recognized.")
 
     def forward(self, x):
+        print(x.dtype)
         x = x.to(self.device)
         output = self.model(x)
         return output

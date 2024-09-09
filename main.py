@@ -107,7 +107,7 @@ if __name__ == "__main__":
     calc_scores = os.getenv("CALC_SCORES", "True")
     parser.add_argument(
         "--calculate_scores_during_training",
-        type=str,
+        type=bool,
         default=calc_scores == "True",
     )
     parser.add_argument(

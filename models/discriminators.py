@@ -62,7 +62,7 @@ class Discriminator(nn.Module):
     def forward(self, x):
         print(f"Generated fences device: {x.device}")
         print(
-            f"Discriminator model device: {next(self.discriminator.parameters()).device}"
+            f"Discriminator model device: {next(self.model.parameters()).device}"
         )
 
         print(x.dtype)

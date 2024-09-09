@@ -109,7 +109,7 @@ class CGAN(pl.LightningModule):
         optimizer_G.step()
 
         pred_real = self.discriminator(fence_imgs)
-        pred_fake = self.discriminator(generated_fences.detach().to(self.device))
+        pred_fake = self.discriminator(generated_fences.detach())
 
         if self.hparams["d_type"] == "vagan":
             loss_real = pred_real.mean()

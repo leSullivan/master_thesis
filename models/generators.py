@@ -63,6 +63,7 @@ class Generator(nn.Module):
             raise ValueError(f"Generator type '{g_type}' is not recognized.")
 
     def forward(self, x):
+        print(x.dtype)
         output = self.model.forward(x)
         return output
 

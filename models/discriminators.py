@@ -60,6 +60,11 @@ class Discriminator(nn.Module):
             raise ValueError(f"Discriminator type '{d_type}' is not recognized.")
 
     def forward(self, x):
+        print(f"Generated fences device: {x.device}")
+        print(
+            f"Discriminator model device: {next(self.discriminator.parameters()).device}"
+        )
+
         print(x.dtype)
         x = x.to(self.device)
         output = self.model(x)

@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --jobname=gan_exploration    
+#SBATCH --job-name=gan_exploration    
 #SBATCH --output=output_%j.txt    
 #SBATCH --error=error_%j.txt          
 #SBATCH --ntasks=1                    

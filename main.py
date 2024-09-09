@@ -141,7 +141,7 @@ if __name__ == "__main__":
         "--n_downsampling",
         type=int,
         default=(
-            N_DOWNSAMPLING_RES_NET if G_TYPE == "resnet" else N_DOWNSAMPLING_U_NET
+            N_DOWNSAMPLING_RES_NET if "resnet" in G_TYPE else N_DOWNSAMPLING_U_NET
         ),
     )
 

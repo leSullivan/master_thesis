@@ -20,6 +20,13 @@ def preprocess_for_fid(x):
     return (normalized * 255).byte()
 
 
+def init_gan_loss(d_type):
+    if d_type == "basic":
+        return nn.BCEWithLogitsLoss()
+    else:
+        return nn.MSELoss()
+
+
 # https://github.com/GaParmar/img2img-turbo
 ################################DINO Struct Loss###############################
 

@@ -5,8 +5,9 @@ import pytorch_lightning as pl
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision.utils import make_grid
 
+import lpips.weights
 from models import Generator, Discriminator
-from .utils import preprocess_for_fid, DinoStructureLoss
+from .utils import preprocess_for_fid, init_gan_loss, DinoStructureLoss
 
 
 class CGAN(pl.LightningModule):
@@ -39,9 +40,10 @@ class CGAN(pl.LightningModule):
             norm_type=norm_type,
             d_type=d_type,
             d_use_sigmoid=False,
+            device=self.device,
         )
 
-        self.criterion_gan = nn.BCELoss()
+        self.criterion_gan = init_gan_loss(d_type=d_type)
         self.criterion_identity = nn.L1Loss()
         self.criterion_perceptual = (
             lpips.LPIPS(net="vgg").to(self.device).requires_grad_(False)
@@ -51,11 +53,6 @@ class CGAN(pl.LightningModule):
         self.structure_loss = DinoStructureLoss(device=self.device)
 
         self.calculate_scores_during_training = calculate_scores_during_training
-
-        self.use_bce_loss = (
-            self.hparams["d_type"] == "basic"
-            or self.hparams["d_use_sigmoid"] == True
-        )
 
         self.automatic_optimization = False
 
@@ -78,10 +75,11 @@ class CGAN(pl.LightningModule):
         generated_fences = self.generator(bg_imgs)
 
         pred_fake = self.discriminator(generated_fences)
-        if self.use_bce_loss:
-            loss_gan = self.criterion_gan(pred_fake, torch.ones_like(pred_fake))
-        else:
+
+        if self.hparams["d_type"] == "vagan":
             loss_gan = pred_fake.mean()
+        else:
+            loss_gan = self.criterion_gan(pred_fake, torch.ones_like(pred_fake))
         self.log("loss_adv", loss_gan, on_step=True, on_epoch=True)
 
         loss_G = loss_gan * self.hparams["lambda_gan"]
@@ -113,12 +111,12 @@ class CGAN(pl.LightningModule):
         pred_real = self.discriminator(fence_imgs)
         pred_fake = self.discriminator(generated_fences.detach())
 
-        if self.use_bce_loss:
-            loss_real = self.criterion_gan(pred_real, torch.ones_like(pred_real))
-            loss_fake = self.criterion_gan(pred_fake, torch.zeros_like(pred_fake))
-        else:
+        if self.hparams["d_type"] == "vagan":
             loss_real = pred_real.mean()
             loss_fake = pred_fake.mean()
+        else:
+            loss_real = self.criterion_gan(pred_real, torch.ones_like(pred_real))
+            loss_fake = self.criterion_gan(pred_fake, torch.zeros_like(pred_fake))
 
         self.log("loss_D_real", loss_real, on_step=True, on_epoch=True)
         self.log("loss_D_fake", loss_fake, on_step=True, on_epoch=True)

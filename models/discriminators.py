@@ -1,6 +1,7 @@
 import functools
 import numpy as np
 import torch.nn as nn
+import torch.nn.functional as F
 
 from src.config import IMG_CH
 from .utils import get_norm_layer
@@ -14,10 +15,13 @@ class Discriminator(nn.Module):
         norm_type,
         d_type,
         d_use_sigmoid,
+        device,
         input_channels=IMG_CH,
     ):
         super(Discriminator, self).__init__()
         self.d_use_sigmoid = d_use_sigmoid
+        self.device = device
+        self.d_type = d_type
 
         norm_layer = get_norm_layer(norm_type)
 
@@ -42,12 +46,22 @@ class Discriminator(nn.Module):
         elif d_type == "pixel":
             self.model = PixelDiscriminator(input_channels, ndf, norm_layer)
 
+        elif d_type == "vagan":
+            import vision_aided_loss
+
+            self.model = vision_aided_loss.Discriminator(
+                cv_type="clip", loss_type="multilevel_sigmoid_s", device=self.device
+            ).to(device)
+            self.model.requires_grad_(True)
+            self.model.cv_ensemble.requires_grad_(False)
+            self.model.train()
+
         else:
-            raise ValueError(
-                f"Discriminator type '{d_type}' is not recognized."
-            )
+            raise ValueError(f"Discriminator type '{d_type}' is not recognized.")
 
     def forward(self, x):
+        # if self.d_type == "vagan":
+        # x = F.interpolate(x * 0.5 + 0.5, size=(256, 256), mode="area")
         output = self.model(x)
         return output
 

@@ -51,10 +51,10 @@ class Discriminator(nn.Module):
 
             self.model = vision_aided_loss.Discriminator(
                 cv_type="clip", loss_type="multilevel_sigmoid_s", device=self.device
-            ).to(device)
+            )
             self.model.requires_grad_(True)
             self.model.cv_ensemble.requires_grad_(False)
-            self.model.train()
+            self.model.train().to(device)
 
         else:
             raise ValueError(f"Discriminator type '{d_type}' is not recognized.")

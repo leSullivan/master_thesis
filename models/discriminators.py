@@ -60,8 +60,6 @@ class Discriminator(nn.Module):
             raise ValueError(f"Discriminator type '{d_type}' is not recognized.")
 
     def forward(self, x):
-        # if self.d_type == "vagan":
-        # x = F.interpolate(x * 0.5 + 0.5, size=(256, 256), mode="area")
         output = self.model(x)
         return output
 

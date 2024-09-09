@@ -13,12 +13,12 @@ NGF = 64
 N_DOWNSAMPLING_RES_NET = 4
 N_DOWNSAMPLING_U_NET = 6
 
-D_TYPE = "vagan"
+D_TYPE = "basic"
 NDF = 64
 ND_LAYERS = 3
 D_USE_SIGMOID = False
 
-NUM_EPOCHS = 500
+NUM_EPOCHS = 400
 BATCH_SIZE = 10
 
 LR = 0.0002
@@ -31,7 +31,7 @@ LAMBDA_CYCLE = 10
 
 NORM_TYPE = "instance"
 
-NUM_WORKERS = 4
+NUM_WORKERS = 6
 
 FENCE_IMG_PATH = os.path.join("imgs", "fences")
 BG_IMG_PATH = os.path.join("imgs", "backgrounds")

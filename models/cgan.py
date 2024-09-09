@@ -80,7 +80,9 @@ class CGAN(pl.LightningModule):
             loss_gan = pred_fake.mean()
         else:
             pred_fake = self.discriminator(generated_fences)
-            loss_gan = self.criterion_gan(pred_fake, torch.ones_like(pred_fake))
+            loss_gan = self.criterion_gan(
+                pred_fake, torch.ones_like(pred_fake, device=self.device)
+            )
 
         self.log("loss_adv", loss_gan, on_step=True, on_epoch=True)
 
@@ -118,8 +120,12 @@ class CGAN(pl.LightningModule):
         else:
             pred_real = self.discriminator(fence_imgs, for_real=True)
             pred_fake = self.discriminator(generated_fences.detach(), for_real=False)
-            loss_real = self.criterion_gan(pred_real, torch.ones_like(pred_real))
-            loss_fake = self.criterion_gan(pred_fake, torch.zeros_like(pred_fake))
+            loss_real = self.criterion_gan(
+                pred_real, torch.ones_like(pred_real, device=self.device)
+            )
+            loss_fake = self.criterion_gan(
+                pred_fake, torch.zeros_like(pred_fake, device=self.device)
+            )
 
         self.log("loss_D_real", loss_real, on_step=True, on_epoch=True)
         self.log("loss_D_fake", loss_fake, on_step=True, on_epoch=True)

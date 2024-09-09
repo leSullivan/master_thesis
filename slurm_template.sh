@@ -1,11 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=gan_exploration    
+#SBATCH --partition=clara
 #SBATCH --output=output_%j.txt    
 #SBATCH --error=error_%j.txt          
 #SBATCH --ntasks=1                    
 #SBATCH --cpus-per-task=4            
-#SBATCH --mem=32G                     
-#SBATCH --partition=gpu            
+#SBATCH --mem=32G                               
 #SBATCH --gpus:v100:2              
 #SBATCH --time=48:00:00
 #SBATCH --mail-user=john.jaenckel@icloud.com

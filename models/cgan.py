@@ -33,7 +33,8 @@ class CGAN(pl.LightningModule):
             norm_type=norm_type,
             g_type=g_type,
             device=self.device,
-        )
+        ).to(self.device)
+
         self.discriminator = Discriminator(
             ndf=ndf,
             nd_layers=nd_layers,
@@ -41,7 +42,7 @@ class CGAN(pl.LightningModule):
             d_type=d_type,
             d_use_sigmoid=False,
             device=self.device,
-        )
+        ).to(self.device)
 
         self.criterion_gan = init_gan_loss(d_type=d_type)
         self.criterion_identity = nn.L1Loss()

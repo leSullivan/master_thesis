@@ -33,7 +33,7 @@ class CGAN(pl.LightningModule):
             norm_type=norm_type,
             g_type=g_type,
             device=self.device,
-        ).to(self.device)
+        )
 
         self.discriminator = Discriminator(
             ndf=ndf,
@@ -42,7 +42,7 @@ class CGAN(pl.LightningModule):
             d_type=d_type,
             d_use_sigmoid=False,
             device=self.device,
-        ).to(self.device)
+        )
 
         self.criterion_gan = init_gan_loss(d_type=d_type)
         self.criterion_identity = nn.L1Loss()
@@ -78,12 +78,13 @@ class CGAN(pl.LightningModule):
         generated_fences = self.generator(bg_imgs)
         print(f"Generated fences device: {generated_fences.device}")
 
-        pred_fake = self.discriminator(generated_fences)
-
         if self.hparams["d_type"] == "vagan":
+            pred_fake = self.discriminator(generated_fences, for_G=True)
             loss_gan = pred_fake.mean()
         else:
+            pred_fake = self.discriminator(generated_fences)
             loss_gan = self.criterion_gan(pred_fake, torch.ones_like(pred_fake))
+
         self.log("loss_adv", loss_gan, on_step=True, on_epoch=True)
 
         loss_G = loss_gan * self.hparams["lambda_gan"]
@@ -112,13 +113,14 @@ class CGAN(pl.LightningModule):
         self.manual_backward(loss_G)
         optimizer_G.step()
 
-        pred_real = self.discriminator(fence_imgs)
-        pred_fake = self.discriminator(generated_fences.detach())
-
         if self.hparams["d_type"] == "vagan":
+            pred_real = self.discriminator(fence_imgs)
+            pred_fake = self.discriminator(generated_fences.detach())
             loss_real = pred_real.mean()
             loss_fake = pred_fake.mean()
         else:
+            pred_real = self.discriminator(fence_imgs, for_real=True)
+            pred_fake = self.discriminator(generated_fences.detach(), for_real=False)
             loss_real = self.criterion_gan(pred_real, torch.ones_like(pred_real))
             loss_fake = self.criterion_gan(pred_fake, torch.zeros_like(pred_fake))
 

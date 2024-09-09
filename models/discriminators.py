@@ -52,20 +52,12 @@ class Discriminator(nn.Module):
             self.model = vision_aided_loss.Discriminator(
                 cv_type="clip", loss_type="multilevel_sigmoid_s", device=self.device
             )
-            self.model.requires_grad_(True)
             self.model.cv_ensemble.requires_grad_(False)
-            self.model.to(device)
 
         else:
             raise ValueError(f"Discriminator type '{d_type}' is not recognized.")
 
     def forward(self, x):
-        print(f"Generated fences device: {x.device}")
-        print(
-            f"Discriminator model device: {next(self.model.parameters()).device}"
-        )
-
-        print(x.dtype)
         x = x.to(self.device)
         output = self.model(x)
         return output

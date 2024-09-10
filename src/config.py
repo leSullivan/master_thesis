@@ -29,6 +29,9 @@ LAMBDA_L1 = 1
 LAMBDA_PERCEPTUAL = 5
 LAMBDA_CYCLE = 10
 
+PROMPT_BG = "Please provide the path to the background image"
+PROMPT_FENCE = "Please provide the path to the fence image"
+
 NORM_TYPE = "instance"
 
 NUM_WORKERS = 6

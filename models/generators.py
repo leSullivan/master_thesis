@@ -15,31 +15,31 @@ from .utils import get_norm_layer
 class Generator(nn.Module):
     def __init__(
         self,
-        ngf,
-        n_downsampling,
-        norm_type,
         g_type,
         device,
         input_nc=IMG_CH,
+        **kwargs,
     ):
         super(Generator, self).__init__()
 
-        norm_layer = get_norm_layer(norm_type)
+        norm_layer = get_norm_layer(kwargs.norm_type)
 
         if g_type == "resnet-6":
-            self.model = ResNetGenerator(ngf, n_downsampling, norm_layer, input_nc)
+            self.model = ResNetGenerator(
+                kwargs.ngf, kwargs.n_downsampling, norm_layer, input_nc
+            )
 
         elif g_type == "resnet-9":
             self.model = ResNetGenerator(
-                ngf, n_downsampling, norm_layer, input_nc, n_blocks=9
+                kwargs.ngf, kwargs.n_downsampling, norm_layer, input_nc, n_blocks=9
             )
 
         elif g_type == "unet":
             self.model = UNetGenerator(
                 input_nc,
                 input_nc,
-                n_downsampling,
-                ngf,
+                kwargs.n_downsampling,
+                kwargs.ngf,
                 norm_layer,
                 use_dropout=False,
             )
@@ -48,22 +48,20 @@ class Generator(nn.Module):
             self.model = UNetGenerator(
                 input_nc,
                 input_nc,
-                n_downsampling,
-                ngf,
+                kwargs.n_downsampling,
+                kwargs.ngf,
                 norm_layer,
                 use_dropout=True,
             )
 
         elif g_type == "diffusion":
-            self.model = SDTurboGenerator(
-                device=device,
-            )
+            self.model = SDTurboGenerator(device, kwargs.prompt_bg, kwargs.prompt_fence)
 
         else:
             raise ValueError(f"Generator type '{g_type}' is not recognized.")
 
-    def forward(self, x):
-        output = self.model.forward(x)
+    def forward(self, x, **kwargs):
+        output = self.model.forward(x, **kwargs)
         return output
 
 
@@ -312,220 +310,144 @@ class SDTurboGenerator(torch.nn.Module):
     def __init__(
         self,
         device,
-        pretrained_path=None,
-        ckpt_folder="checkpoints",
-        lora_rank_unet=8,
-        lora_rank_vae=4,
+        prompt_bg,
+        prompt_fence,
     ):
         super().__init__()
-        self.device = device
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            "stabilityai/sd-turbo", subfolder="tokenizer"
-        ).to(self.device)
-        self.text_encoder = CLIPTextModel.from_pretrained(
+        self.unet = initialize_unet().to(device)
+        # unet.enable_xformers_memory_efficient_attention()
+        # unet.enable_gradient_checkpointing()
+        vae = initialize_vae(device)
+
+        self.scheduler = get_1step_sched(device=device)
+
+        self.encoder = VAE_encode(vae, copy.deepcopy(vae)).to(device)
+        self.decoder = VAE_decode(vae, copy.deepcopy(vae)).to(device)
+
+        self.timesteps = torch.tensor([999], device="cuda").long()
+
+        self.model = SDTurboGenerator(
+            device=device,
+        )
+
+        tokenizer = AutoTokenizer.from_pretrained(
+            "stabilityai/sd-turbo",
+            subfolder="tokenizer",
+            use_fast=False,
+        )
+        text_encoder = CLIPTextModel.from_pretrained(
             "stabilityai/sd-turbo", subfolder="text_encoder"
-        ).to(self.device)
-        self.sched = get_1step_sched(device=self.device)
+        ).to(device)
 
-        vae = AutoencoderKL.from_pretrained("stabilityai/sd-turbo", subfolder="vae")
-        unet = UNet2DConditionModel.from_pretrained(
-            "stabilityai/sd-turbo", subfolder="unet"
-        )
-        vae.encoder.forward = my_vae_encoder_fwd.__get__(
-            vae.encoder, vae.encoder.__class__
-        )
-        vae.decoder.forward = my_vae_decoder_fwd.__get__(
-            vae.decoder, vae.decoder.__class__
-        )
-        # add the skip connection convs
-        vae.decoder.skip_conv_1 = torch.nn.Conv2d(
-            512, 512, kernel_size=(1, 1), stride=(1, 1), bias=False
-        ).to(self.device)
-        vae.decoder.skip_conv_2 = torch.nn.Conv2d(
-            256, 512, kernel_size=(1, 1), stride=(1, 1), bias=False
-        ).to(self.device)
-        vae.decoder.skip_conv_3 = torch.nn.Conv2d(
-            128, 512, kernel_size=(1, 1), stride=(1, 1), bias=False
-        ).to(self.device)
-        vae.decoder.skip_conv_4 = torch.nn.Conv2d(
-            128, 256, kernel_size=(1, 1), stride=(1, 1), bias=False
-        ).to(self.device)
-        vae.decoder.ignore_skip = False
-        self.unet, self.vae = unet, vae
+        fence_prompt_tokens = tokenizer(
+            prompt_fence,
+            max_length=tokenizer.model_max_length,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+        ).input_ids[0]
+        self.bg2fence_emb = text_encoder(fence_prompt_tokens.to(device).unsqueeze(0))[
+            0
+        ].detach()
 
-        if pretrained_path is not None:
-            sd = torch.load(pretrained_path)
-            self.load_ckpt_from_state_dict(sd)
-            self.timesteps = torch.tensor([999], device=self.device).long()
-            self.caption = None
-            self.direction = None
+        bg_prompt_tokens = tokenizer(
+            prompt_bg,
+            max_length=tokenizer.model_max_length,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+        ).input_ids[0]
+        self.fence2bg_emb = text_encoder(bg_prompt_tokens.to(device).unsqueeze(0))[
+            0
+        ].detach()
 
-        self.vae_enc.to(self.device)
-        self.vae_dec.to(self.device)
-        self.unet.to(self.device)
+    # @staticmethod
+    # def get_traininable_params(unet, vae_a2b, vae_b2a):
+    #     # add all unet parameters
+    #     params_gen = list(unet.conv_in.parameters())
+    #     unet.conv_in.requires_grad_(True)
+    #     unet.set_adapters(["default_encoder", "default_decoder", "default_others"])
+    #     for n, p in unet.named_parameters():
+    #         if "lora" in n and "default" in n:
+    #             assert p.requires_grad
+    #             params_gen.append(p)
 
-    def load_ckpt_from_state_dict(self, sd):
-        lora_conf_encoder = LoraConfig(
-            r=sd["rank_unet"],
-            init_lora_weights="gaussian",
-            target_modules=sd["l_target_modules_encoder"],
-            lora_alpha=sd["rank_unet"],
-        )
-        lora_conf_decoder = LoraConfig(
-            r=sd["rank_unet"],
-            init_lora_weights="gaussian",
-            target_modules=sd["l_target_modules_decoder"],
-            lora_alpha=sd["rank_unet"],
-        )
-        lora_conf_others = LoraConfig(
-            r=sd["rank_unet"],
-            init_lora_weights="gaussian",
-            target_modules=sd["l_modules_others"],
-            lora_alpha=sd["rank_unet"],
-        )
-        self.unet.add_adapter(lora_conf_encoder, adapter_name="default_encoder")
-        self.unet.add_adapter(lora_conf_decoder, adapter_name="default_decoder")
-        self.unet.add_adapter(lora_conf_others, adapter_name="default_others")
-        for n, p in self.unet.named_parameters():
-            name_sd = n.replace(".default_encoder.weight", ".weight")
-            if "lora" in n and "default_encoder" in n:
-                p.data.copy_(sd["sd_encoder"][name_sd])
-        for n, p in self.unet.named_parameters():
-            name_sd = n.replace(".default_decoder.weight", ".weight")
-            if "lora" in n and "default_decoder" in n:
-                p.data.copy_(sd["sd_decoder"][name_sd])
-        for n, p in self.unet.named_parameters():
-            name_sd = n.replace(".default_others.weight", ".weight")
-            if "lora" in n and "default_others" in n:
-                p.data.copy_(sd["sd_other"][name_sd])
-        self.unet.set_adapter(["default_encoder", "default_decoder", "default_others"])
+    #     # add all vae_a2b parameters
+    #     for n, p in vae_a2b.named_parameters():
+    #         if "lora" in n and "vae_skip" in n:
+    #             assert p.requires_grad
+    #             params_gen.append(p)
+    #     params_gen = params_gen + list(vae_a2b.decoder.skip_conv_1.parameters())
+    #     params_gen = params_gen + list(vae_a2b.decoder.skip_conv_2.parameters())
+    #     params_gen = params_gen + list(vae_a2b.decoder.skip_conv_3.parameters())
+    #     params_gen = params_gen + list(vae_a2b.decoder.skip_conv_4.parameters())
 
-        vae_lora_config = LoraConfig(
-            r=sd["rank_vae"],
-            init_lora_weights="gaussian",
-            target_modules=sd["vae_lora_target_modules"],
-        )
-        self.vae.add_adapter(vae_lora_config, adapter_name="vae_skip")
-        self.vae.decoder.gamma = 1
-        self.vae_b2a = copy.deepcopy(self.vae)
-        self.vae_enc = VAE_encode(self.vae, vae_b2a=self.vae_b2a)
-        self.vae_enc.load_state_dict(sd["sd_vae_enc"])
-        self.vae_dec = VAE_decode(self.vae, vae_b2a=self.vae_b2a)
-        self.vae_dec.load_state_dict(sd["sd_vae_dec"])
+    #     # add all vae_b2a parameters
+    #     for n, p in vae_b2a.named_parameters():
+    #         if "lora" in n and "vae_skip" in n:
+    #             assert p.requires_grad
+    #             params_gen.append(p)
+    #     params_gen = params_gen + list(vae_b2a.decoder.skip_conv_1.parameters())
+    #     params_gen = params_gen + list(vae_b2a.decoder.skip_conv_2.parameters())
+    #     params_gen = params_gen + list(vae_b2a.decoder.skip_conv_3.parameters())
+    #     params_gen = params_gen + list(vae_b2a.decoder.skip_conv_4.parameters())
+    #     return params_gen
 
-    @staticmethod
-    def forward_with_networks(
-        x, direction, vae_enc, unet, vae_dec, sched, timesteps, text_emb
-    ):
-        B = x.shape[0]
-        assert direction in ["a2b", "b2a"]
+    def forward(self, x, direction):
+        batch_size = x.shape[0]
+
+        caption_emb_base = (
+            self.bg2fence_emb if direction == "Bg2Fence" else self.fence2bg_emb
+        )
+        # check dtype ! (to  tochfloat 32)
+        caption_emb = caption_emb_base.repeat(batch_size, 1, 1)
+
         # encode to latent space
-        x_enc = vae_enc(x, direction=direction).to(x.dtype)
+        x_enc = self.encoder(x, direction=direction).to(x.dtype)
         # duffision steps
-        model_pred = unet(
+        model_pred = self.unet(
             x_enc,
-            timesteps,
-            encoder_hidden_states=text_emb,
+            self.timesteps,
+            encoder_hidden_states=caption_emb,
         ).sample
         x_out = torch.stack(
             [
-                sched.step(
-                    model_pred[i], timesteps[i], x_enc[i], return_dict=True
+                self.scheduler.step(
+                    model_pred[i], self.timesteps[i], x_enc[i], return_dict=True
                 ).prev_sample
-                for i in range(B)
+                for i in range(batch_size)
             ]
         )
         # decode to image space
-        x_out_decoded = vae_dec(x_out, direction=direction)
+        x_out_decoded = self.decoder(x_out, direction=direction)
         return x_out_decoded
-
-    @staticmethod
-    def get_traininable_params(unet, vae_a2b, vae_b2a):
-        # add all unet parameters
-        params_gen = list(unet.conv_in.parameters())
-        unet.conv_in.requires_grad_(True)
-        unet.set_adapters(["default_encoder", "default_decoder", "default_others"])
-        for n, p in unet.named_parameters():
-            if "lora" in n and "default" in n:
-                assert p.requires_grad
-                params_gen.append(p)
-
-        # add all vae_a2b parameters
-        for n, p in vae_a2b.named_parameters():
-            if "lora" in n and "vae_skip" in n:
-                assert p.requires_grad
-                params_gen.append(p)
-        params_gen = params_gen + list(vae_a2b.decoder.skip_conv_1.parameters())
-        params_gen = params_gen + list(vae_a2b.decoder.skip_conv_2.parameters())
-        params_gen = params_gen + list(vae_a2b.decoder.skip_conv_3.parameters())
-        params_gen = params_gen + list(vae_a2b.decoder.skip_conv_4.parameters())
-
-        # add all vae_b2a parameters
-        for n, p in vae_b2a.named_parameters():
-            if "lora" in n and "vae_skip" in n:
-                assert p.requires_grad
-                params_gen.append(p)
-        params_gen = params_gen + list(vae_b2a.decoder.skip_conv_1.parameters())
-        params_gen = params_gen + list(vae_b2a.decoder.skip_conv_2.parameters())
-        params_gen = params_gen + list(vae_b2a.decoder.skip_conv_3.parameters())
-        params_gen = params_gen + list(vae_b2a.decoder.skip_conv_4.parameters())
-        return params_gen
-
-    def forward(self, x_t, direction=None, caption=None, caption_emb=None):
-        if direction is None:
-            assert self.direction is not None
-            direction = self.direction
-        if caption is None and caption_emb is None:
-            assert self.caption is not None
-            caption = self.caption
-        if caption_emb is not None:
-            caption_enc = caption_emb
-        else:
-            caption_tokens = self.tokenizer(
-                caption,
-                max_length=self.tokenizer.model_max_length,
-                padding="max_length",
-                truncation=True,
-                return_tensors="pt",
-            ).input_ids.to(x_t.device)
-            caption_enc = self.text_encoder(caption_tokens)[0].detach().clone()
-        return self.forward_with_networks(
-            x_t,
-            direction,
-            self.vae_enc,
-            self.unet,
-            self.vae_dec,
-            self.sched,
-            self.timesteps,
-            caption_enc,
-        )
 
 
 class VAE_encode(nn.Module):
-    def __init__(self, vae, vae_Fence2Bg=None):
+    def __init__(self, vae_BgToFence, vae_Fence2Bg):
         super(VAE_encode, self).__init__()
-        self.vae = vae
+        self.vae_BgToFence = vae_BgToFence
         self.vae_Fence2Bg = vae_Fence2Bg
 
     def forward(self, x, direction):
         assert direction in ["Bg2Fence", "Fence2Bg"]
         if direction == "Bg2Fence":
-            _vae = self.vae
+            _vae = self.vae_BgToFence
         else:
             _vae = self.vae_Fence2Bg
         return _vae.encode(x).latent_dist.sample() * _vae.config.scaling_factor
 
 
 class VAE_decode(nn.Module):
-    def __init__(self, vae, vae_Fence2Bg=None):
+    def __init__(self, vae_BgToFence, vae_Fence2Bg):
         super(VAE_decode, self).__init__()
-        self.vae = vae
+        self.vae_BgToFence = vae_BgToFence
         self.vae_Fence2Bg = vae_Fence2Bg
 
     def forward(self, x, direction):
         assert direction in ["Bg2Fence", "Fence2Bg"]
         if direction == "Bg2Fence":
-            _vae = self.vae
+            _vae = self.vae_BgToFence
         else:
             _vae = self.vae_Fence2Bg
         assert _vae.encoder.current_down_blocks is not None

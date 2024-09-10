@@ -5,7 +5,7 @@ import pytorch_lightning as pl
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision.utils import make_grid
 
-from models import Generator, Discriminator  # Bgssuming you have defined these already
+from models import Generator, Discriminator, initialize_unet
 from .utils import preprocess_for_fid, DinoStructureLoss
 
 
@@ -28,13 +28,7 @@ class CycleGAN(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.generator_Bg2Fence = UNet(
-            ngf=ngf,
-            n_downsampling=n_downsampling,
-            norm_type=norm_type,
-            g_type=g_type,
-        )
-        self.generator_Fence2Bg = Generator(
+        self.generator = Generator(
             ngf=ngf,
             n_downsampling=n_downsampling,
             norm_type=norm_type,

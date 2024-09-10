@@ -5,7 +5,6 @@ import pytorch_lightning as pl
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision.utils import make_grid
 
-import lpips.weights
 from models import Generator, Discriminator
 from .utils import preprocess_for_fid, init_gan_loss, DinoStructureLoss
 

@@ -34,6 +34,8 @@ from src.config import (
     LAMBDA_CYCLE,
     LAMBDA_GAN,
     LAMBDA_PERCEPTUAL,
+    PROMPT_BG,
+    PROMPT_FENCE,
 )
 
 
@@ -143,6 +145,17 @@ if __name__ == "__main__":
         default=(
             N_DOWNSAMPLING_RES_NET if "resnet" in G_TYPE else N_DOWNSAMPLING_U_NET
         ),
+    )
+
+    parser.add_argument(
+        "--prompt_fence",
+        type=float,
+        default=PROMPT_FENCE,
+    )
+    parser.add_argument(
+        "--prompt_bg",
+        type=float,
+        default=PROMPT_BG,
     )
 
     # discriminator

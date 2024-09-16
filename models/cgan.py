@@ -19,6 +19,7 @@ class CGAN(pl.LightningModule):
         g_type,
         ngf,
         n_downsampling,
+        d_use_sigmoid,
         calculate_scores_during_training,
         *args,
         **kwargs,
@@ -39,7 +40,7 @@ class CGAN(pl.LightningModule):
             nd_layers=nd_layers,
             norm_type=norm_type,
             d_type=d_type,
-            d_use_sigmoid=False,
+            d_use_sigmoid=d_use_sigmoid,
             device=self.device,
         )
 
@@ -162,14 +163,6 @@ class CGAN(pl.LightningModule):
                     nrow=4,
                     normalize=True,
                 )
-
-            fake_fence_imgs = self.generator(bg_imgs)
-
-            grid = make_grid(
-                torch.cat((bg_imgs, fake_fence_imgs, fence_imgs), dim=0),
-                nrow=4,
-                normalize=True,
-            )
 
             self.logger.experiment.add_image(
                 "Generated_Images", grid, self.current_epoch

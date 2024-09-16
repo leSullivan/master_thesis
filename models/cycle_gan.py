@@ -15,6 +15,7 @@ class CycleGAN(pl.LightningModule):
         norm_type,
         d_type,
         ndf,
+        d_use_sigmoid,
         nd_layers,
         g_type,
         ngf,
@@ -46,12 +47,16 @@ class CycleGAN(pl.LightningModule):
             nd_layers=nd_layers,
             norm_type=norm_type,
             d_type=d_type,
+            d_use_sigmoid=d_use_sigmoid,
+            device=device,
         )
         self.discriminator_Fence = Discriminator(
             ndf=ndf,
             nd_layers=nd_layers,
             norm_type=norm_type,
             d_type=d_type,
+            d_use_sigmoid=d_use_sigmoid,
+            device=self.device,
         )
 
         self.criterion_gan = init_gan_loss()
@@ -197,7 +202,7 @@ class CycleGAN(pl.LightningModule):
                 fake_bg = self.generator_Fence2Bg(fence_imgs)
 
                 grid = make_grid(
-                    torch.cat((bg_imgs, fake_fence, fence_imgs, fake_bg), dim=0),
+                    torch.cat((bg_imgs, fake_fence, fake_bg), dim=0),
                     nrow=4,
                     normalize=True,
                 )

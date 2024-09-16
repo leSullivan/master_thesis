@@ -4,10 +4,10 @@ imgs/training_data
 
 model_summary.py
 
-tb_logs
-
 runs
 .env
+
+test_logs
 
 **/__pycache__/
 **__pycache__

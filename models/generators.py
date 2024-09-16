@@ -53,10 +53,6 @@ class Generator(nn.Module):
                 norm_layer,
                 use_dropout=True,
             )
-
-        elif g_type == "diffusion":
-            self.model = SDTurboGenerator(device, kwargs.prompt_bg, kwargs.prompt_fence)
-
         else:
             raise ValueError(f"Generator type '{g_type}' is not recognized.")
 
@@ -313,22 +309,19 @@ class SDTurboGenerator(torch.nn.Module):
         prompt_bg,
         prompt_fence,
     ):
-        super().__init__()
+        super(SDTurboGenerator, self).__init__()
         self.unet = initialize_unet().to(device)
         # unet.enable_xformers_memory_efficient_attention()
         # unet.enable_gradient_checkpointing()
         vae = initialize_vae(device)
+        self.vae = vae
 
         self.scheduler = get_1step_sched(device=device)
 
         self.encoder = VAE_encode(vae, copy.deepcopy(vae)).to(device)
         self.decoder = VAE_decode(vae, copy.deepcopy(vae)).to(device)
 
-        self.timesteps = torch.tensor([999], device="cuda").long()
-
-        self.model = SDTurboGenerator(
-            device=device,
-        )
+        self.timesteps = torch.tensor([999], device=device).long()
 
         tokenizer = AutoTokenizer.from_pretrained(
             "stabilityai/sd-turbo",
@@ -361,37 +354,36 @@ class SDTurboGenerator(torch.nn.Module):
             0
         ].detach()
 
-    # @staticmethod
-    # def get_traininable_params(unet, vae_a2b, vae_b2a):
-    #     # add all unet parameters
-    #     params_gen = list(unet.conv_in.parameters())
-    #     unet.conv_in.requires_grad_(True)
-    #     unet.set_adapters(["default_encoder", "default_decoder", "default_others"])
-    #     for n, p in unet.named_parameters():
-    #         if "lora" in n and "default" in n:
-    #             assert p.requires_grad
-    #             params_gen.append(p)
+    def get_traininable_params(self):
+        # add all unet parameters
+        params_gen = list(self.unet.conv_in.parameters())
+        self.unet.conv_in.requires_grad_(True)
+        self.unet.set_adapters(["default_encoder", "default_decoder", "default_others"])
+        for n, p in self.unet.named_parameters():
+            if "lora" in n and "default" in n:
+                assert p.requires_grad
+                params_gen.append(p)
 
-    #     # add all vae_a2b parameters
-    #     for n, p in vae_a2b.named_parameters():
-    #         if "lora" in n and "vae_skip" in n:
-    #             assert p.requires_grad
-    #             params_gen.append(p)
-    #     params_gen = params_gen + list(vae_a2b.decoder.skip_conv_1.parameters())
-    #     params_gen = params_gen + list(vae_a2b.decoder.skip_conv_2.parameters())
-    #     params_gen = params_gen + list(vae_a2b.decoder.skip_conv_3.parameters())
-    #     params_gen = params_gen + list(vae_a2b.decoder.skip_conv_4.parameters())
+        # add all vae_a2b parameters
+        for n, p in self.vae.named_parameters():
+            if "lora" in n and "vae_skip" in n:
+                assert p.requires_grad
+                params_gen.append(p)
+        params_gen = params_gen + list(self.vae.decoder.skip_conv_1.parameters())
+        params_gen = params_gen + list(self.vae.decoder.skip_conv_2.parameters())
+        params_gen = params_gen + list(self.vae.decoder.skip_conv_3.parameters())
+        params_gen = params_gen + list(self.vae.decoder.skip_conv_4.parameters())
 
-    #     # add all vae_b2a parameters
-    #     for n, p in vae_b2a.named_parameters():
-    #         if "lora" in n and "vae_skip" in n:
-    #             assert p.requires_grad
-    #             params_gen.append(p)
-    #     params_gen = params_gen + list(vae_b2a.decoder.skip_conv_1.parameters())
-    #     params_gen = params_gen + list(vae_b2a.decoder.skip_conv_2.parameters())
-    #     params_gen = params_gen + list(vae_b2a.decoder.skip_conv_3.parameters())
-    #     params_gen = params_gen + list(vae_b2a.decoder.skip_conv_4.parameters())
-    #     return params_gen
+        # add all vae_b2a parameters
+        for n, p in self.vae.named_parameters():
+            if "lora" in n and "vae_skip" in n:
+                assert p.requires_grad
+                params_gen.append(p)
+        params_gen = params_gen + list(self.vae.decoder.skip_conv_1.parameters())
+        params_gen = params_gen + list(self.vae.decoder.skip_conv_2.parameters())
+        params_gen = params_gen + list(self.vae.decoder.skip_conv_3.parameters())
+        params_gen = params_gen + list(self.vae.decoder.skip_conv_4.parameters())
+        return params_gen
 
     def forward(self, x, direction):
         batch_size = x.shape[0]
@@ -456,7 +448,7 @@ class VAE_decode(nn.Module):
         return x_decoded
 
 
-def initialize_unet(rank, return_lora_module_names=False):
+def initialize_unet(rank=8, return_lora_module_names=False):
     # load unet
     unet = UNet2DConditionModel.from_pretrained(
         "stabilityai/sd-turbo", subfolder="unet"

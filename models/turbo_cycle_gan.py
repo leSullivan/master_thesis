@@ -5,22 +5,22 @@ import pytorch_lightning as pl
 from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision.utils import make_grid
 
-from models import Generator, Discriminator, initialize_unet
+from models import SDTurboGenerator, Discriminator
 from .utils import preprocess_for_fid, DinoStructureLoss
 
 
-class CycleGAN(pl.LightningModule):
+class TurboCycleGAN(pl.LightningModule):
     def __init__(
         self,
         norm_type,
         d_type,
         ndf,
         nd_layers,
-        g_type,
-        ngf,
-        n_downsampling,
+        prompt_bg,
+        prompt_fence,
         lambda_cycle,
         lambda_identity,
+        d_use_sigmoid,
         calculate_scores_during_training,
         *args,
         **kwargs,
@@ -28,11 +28,10 @@ class CycleGAN(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        self.generator = Generator(
-            ngf=ngf,
-            n_downsampling=n_downsampling,
-            norm_type=norm_type,
-            g_type=g_type,
+        self.generator = SDTurboGenerator(
+            device=self.device,
+            prompt_bg=prompt_bg,
+            prompt_fence=prompt_fence,
         )
 
         self.discriminator_Bg = Discriminator(
@@ -40,12 +39,17 @@ class CycleGAN(pl.LightningModule):
             nd_layers=nd_layers,
             norm_type=norm_type,
             d_type=d_type,
+            d_use_sigmoid=d_use_sigmoid,
+            device=self.device,
         )
+
         self.discriminator_Fence = Discriminator(
             ndf=ndf,
             nd_layers=nd_layers,
             norm_type=norm_type,
             d_type=d_type,
+            d_use_sigmoid=d_use_sigmoid,
+            device=self.device,
         )
 
         self.criterion_gan = self.init_adv_loss()
@@ -62,12 +66,6 @@ class CycleGAN(pl.LightningModule):
         self.calculate_scores_during_training = calculate_scores_during_training
         self.automatic_optimization = False
 
-    def forward(self, x, direction="Bg2Fence"):
-        if direction == "Bg2Fence":
-            return self.generator_Bg2Fence(x)
-        else:
-            return self.generator_Fence2Bg(x)
-
     def init_adv_loss(self):
         if self.hparams["d_type"] == "basic":
             return nn.BCELoss()
@@ -78,11 +76,11 @@ class CycleGAN(pl.LightningModule):
         bg_imgs, fence_imgs = batch["background"], batch["fence"]
         optimizer_G, optimizer_D = self.optimizers()
 
-        fake_fences = self.generator_Bg2Fence(bg_imgs)
-        fake_bgs = self.generator_Fence2Bg(fence_imgs)
+        fake_fences = self.generator.forward(bg_imgs, "Bg2Fence")
+        fake_bgs = self.generator.forward(fence_imgs, "Fence2Bg")
 
-        rec_fences = self.generator_Bg2Fence(fake_bgs)
-        rec_bgs = self.generator_Fence2Bg(fake_fences)
+        rec_fences = self.generator.forward(fake_bgs, "Bg2Fence")
+        rec_bgs = self.generator.forward(fake_fences, "Fence2Bg")
 
         # cycle loss
         loss_cycle_bg = self.criterion_cycle(rec_bgs, bg_imgs)
@@ -93,10 +91,10 @@ class CycleGAN(pl.LightningModule):
 
         # identity loss
         loss_identity_bg = self.criterion_identity(
-            self.generator_Fence2Bg(bg_imgs), bg_imgs
+            self.generator.forward(bg_imgs, "Fence2Bg"), bg_imgs
         )
         loss_identity_fence = self.criterion_identity(
-            self.generator_Bg2Fence(fence_imgs), fence_imgs
+            self.generator.forward(fence_imgs, "BgToFence"), fence_imgs
         )
         loss_identity = loss_identity_bg + loss_identity_fence
 
@@ -193,11 +191,11 @@ class CycleGAN(pl.LightningModule):
                 bg_imgs = batch_Bg.to(self.device)
                 fence_imgs = batch_Fence.to(self.device)
 
-                fake_fence = self.generator_Bg2Fence(bg_imgs)
-                fake_bg = self.generator_Fence2Bg(fence_imgs)
+                fake_fence = self.generator.forward(bg_imgs, "Bg2Fence")
+                fake_bg = self.generator.forward(fence_imgs, "Fence2Bg")
 
                 grid = make_grid(
-                    torch.cat((bg_imgs, fake_fence, fence_imgs, fake_bg), dim=0),
+                    torch.cat((bg_imgs, fake_fence, fake_bg), dim=0),
                     nrow=4,
                     normalize=True,
                 )
@@ -221,8 +219,7 @@ class CycleGAN(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer_G = torch.optim.AdamW(
-            list(self.generator_Bg2Fence.parameters())
-            + list(self.generator_Fence2Bg.parameters()),
+            list(self.generator.parameters()),
             lr=self.hparams.lr,
             betas=(self.hparams.beta1, self.hparams.beta2),
         )

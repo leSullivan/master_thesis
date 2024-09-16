@@ -8,7 +8,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 from src.create_training_dataset import sample_images
 from src.data_pipeline import UnpairedImageDataModule
-from models import CGAN, CycleGAN
+from models import CGAN, CycleGAN, TurboCycleGAN
 
 from src.config import (
     SEED,
@@ -52,6 +52,8 @@ def main(args):
         GAN = CGAN(**vars(args))
     elif args.model_name.lower() == "cyclegan":
         GAN = CycleGAN(**vars(args))
+    elif args.model_name.lower() == "turbo_cyclegan":
+        GAN = TurboCycleGAN(**vars(args))
     else:
         raise NotImplementedError(f"Invalid model name: {args.model}")
 
@@ -60,6 +62,10 @@ def main(args):
         model = GAN.load_from_checkpoint(path).to(torch.float32)
     else:
         model = GAN.to(torch.float32)
+
+    logger_name = (
+        "tb_logs" if os.getenv("CALC_SCORES", "True") == "True" else "test_logs"
+    )
 
     logger = TensorBoardLogger("tb_logs", name=args.model_name)
 
@@ -149,12 +155,12 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--prompt_fence",
-        type=float,
+        type=str,
         default=PROMPT_FENCE,
     )
     parser.add_argument(
         "--prompt_bg",
-        type=float,
+        type=str,
         default=PROMPT_BG,
     )
 

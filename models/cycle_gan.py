@@ -48,7 +48,7 @@ class CycleGAN(pl.LightningModule):
             norm_type=norm_type,
             d_type=d_type,
             d_use_sigmoid=d_use_sigmoid,
-            device=device,
+            device=self.device,
         )
         self.discriminator_Fence = Discriminator(
             ndf=ndf,

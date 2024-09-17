@@ -63,10 +63,6 @@ def main(args):
     else:
         model = GAN.to(torch.float32)
 
-    logger_name = (
-        "tb_logs" if os.getenv("CALC_SCORES", "True") == "True" else "test_logs"
-    )
-
     logger = TensorBoardLogger("tb_logs", name=args.model_name)
 
     checkpoint_callback = ModelCheckpoint(

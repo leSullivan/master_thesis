@@ -7,7 +7,7 @@ model_summary.py
 runs
 .env
 
-test_logs
+tb_logs
 
 **/__pycache__/
 **__pycache__

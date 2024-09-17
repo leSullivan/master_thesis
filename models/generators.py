@@ -16,7 +16,6 @@ class Generator(nn.Module):
     def __init__(
         self,
         g_type,
-        device,
         input_nc=IMG_CH,
         **kwargs,
     ):

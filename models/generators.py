@@ -21,24 +21,28 @@ class Generator(nn.Module):
     ):
         super(Generator, self).__init__()
 
-        norm_layer = get_norm_layer(kwargs.norm_type)
+        norm_layer = get_norm_layer(kwargs["norm_type"])
 
         if g_type == "resnet-6":
             self.model = ResNetGenerator(
-                kwargs.ngf, kwargs.n_downsampling, norm_layer, input_nc
+                kwargs["ngf"], kwargs["n_downsampling"], norm_layer, input_nc
             )
 
         elif g_type == "resnet-9":
             self.model = ResNetGenerator(
-                kwargs.ngf, kwargs.n_downsampling, norm_layer, input_nc, n_blocks=9
+                kwargs["ngf"],
+                kwargs["n_downsampling"],
+                norm_layer,
+                input_nc,
+                n_blocks=9,
             )
 
         elif g_type == "unet":
             self.model = UNetGenerator(
                 input_nc,
                 input_nc,
-                kwargs.n_downsampling,
-                kwargs.ngf,
+                kwargs["n_downsampling"],
+                kwargs["ngf"],
                 norm_layer,
                 use_dropout=False,
             )
@@ -47,8 +51,8 @@ class Generator(nn.Module):
             self.model = UNetGenerator(
                 input_nc,
                 input_nc,
-                kwargs.n_downsampling,
-                kwargs.ngf,
+                kwargs["n_downsampling"],
+                kwargs["ngf"],
                 norm_layer,
                 use_dropout=True,
             )

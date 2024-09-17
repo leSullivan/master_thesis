@@ -59,7 +59,7 @@ class CycleGAN(pl.LightningModule):
             device=self.device,
         )
 
-        self.criterion_gan = init_gan_loss()
+        self.criterion_gan = init_gan_loss(d_type=d_type)
         self.criterion_cycle = nn.L1Loss()
         self.criterion_identity = nn.L1Loss()
         self.criterion_perceptual = lpips.LPIPS(net="vgg").to(self.device)

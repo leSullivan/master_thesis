@@ -3,7 +3,7 @@ import torch
 
 SEED = 42
 
-MODEL_TYPE = "turbo_cyclegan"
+MODEL_TYPE = "cgan"
 IMG_W = 768
 IMG_H = 512
 IMG_CH = 3

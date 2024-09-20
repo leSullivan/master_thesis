@@ -60,7 +60,7 @@ class TurboCycleGAN(pl.LightningModule):
         self.lambda_cycle = lambda_cycle
         self.lambda_identity = lambda_identity
 
-        self.fid = FrechetInceptionDistance(reset_real_features=False)
+        self.fid = FrechetInceptionDistance()
         self.structure_loss = DinoStructureLoss(device=self.device)
 
         self.calculate_scores_during_training = calculate_scores_during_training
@@ -94,7 +94,7 @@ class TurboCycleGAN(pl.LightningModule):
             self.generator.forward(bg_imgs, "Fence2Bg"), bg_imgs
         )
         loss_identity_fence = self.criterion_identity(
-            self.generator.forward(fence_imgs, "BgToFence"), fence_imgs
+            self.generator.forward(fence_imgs, "Bg2Fence"), fence_imgs
         )
         loss_identity = loss_identity_bg + loss_identity_fence
 
@@ -182,37 +182,42 @@ class TurboCycleGAN(pl.LightningModule):
             self.structure_loss.update_dino_struct_loss(bg_imgs, fake_fences)
 
     def on_train_epoch_end(self):
-        if self.current_epoch % 50 == 0 and self.current_epoch != 0:
-            val_dataloader = self.trainer.datamodule.val_dataloader()
-            loader_Bg = val_dataloader["background"]
-            loader_Fence = val_dataloader["fence"]
-
-            for batch_Bg, batch_Fence in zip(loader_Bg, loader_Fence):
-                bg_imgs = batch_Bg.to(self.device)
-                fence_imgs = batch_Fence.to(self.device)
-
-                fake_fence = self.generator.forward(bg_imgs, "Bg2Fence")
-                fake_bg = self.generator.forward(fence_imgs, "Fence2Bg")
-
-                grid = make_grid(
-                    torch.cat((bg_imgs, fake_fence, fake_bg), dim=0),
-                    nrow=4,
-                    normalize=True,
-                )
-
-                self.logger.experiment.add_image(
-                    "Generated_Images", grid, self.current_epoch
-                )
-
         if (
-            self.current_epoch % 20 == 0
-            and self.current_epoch != 0
-            and self.calculate_scores_during_training
+            not self.current_epoch % 20 == 0
+            or self.current_epoch == 0
+            or not self.calculate_scores_during_training
         ):
+            return
+
+        val_dataloader = self.trainer.datamodule.val_dataloader()
+        loader_A = val_dataloader["background"]
+        loader_B = val_dataloader["fence"]
+
+        for batch_A, batch_B in zip(loader_A, loader_B):
+
+            bg_imgs = batch_A.to(self.device)
+            fence_imgs = batch_B.to(self.device)
+            fake_fence_imgs = self.generator.forward(bg_imgs, "Bg2Fene")
+
+            grid = make_grid(
+                torch.cat((bg_imgs, fake_fence_imgs, fence_imgs), dim=0),
+                nrow=4,
+                normalize=True,
+            )
+
+            self.logger.experiment.add_image(
+                "Generated_Images", grid, self.current_epoch
+            )
+
+            norm_fence_imgs = preprocess_for_fid(fence_imgs)
+            norm_fake_fences = preprocess_for_fid(fake_fence_imgs)
+            self.fid.update(norm_fence_imgs, real=True)
+            self.fid.update(norm_fake_fences, real=False)
             fid_score = self.fid.compute().item()
             self.log("FID", fid_score, on_epoch=True)
             self.fid.reset()
 
+            self.structure_loss.update_dino_struct_loss(bg_imgs, fake_fence_imgs)
             structure_loss = self.structure_loss.compute()
             self.log("DINO", structure_loss, on_epoch=True)
             self.structure_loss.reset()

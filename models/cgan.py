@@ -161,9 +161,9 @@ class CGAN(pl.LightningModule):
                 "Generated_Images", grid, self.current_epoch
             )
 
-            nrom_fence_imgs = preprocess_for_fid(fence_imgs)
+            norm_fence_imgs = preprocess_for_fid(fence_imgs)
             norm_fake_fences = preprocess_for_fid(fake_fence_imgs)
-            self.fid.update(nrom_fence_imgs, real=True)
+            self.fid.update(norm_fence_imgs, real=True)
             self.fid.update(norm_fake_fences, real=False)
             fid_score = self.fid.compute().item()
             self.log("FID", fid_score, on_epoch=True)

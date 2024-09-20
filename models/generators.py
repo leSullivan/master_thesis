@@ -319,7 +319,7 @@ class SDTurboGenerator(torch.nn.Module):
         vae = initialize_vae(device).to(device)
         self.vae = vae
 
-        self.scheduler = get_1step_sched(device=device).to(device)
+        self.scheduler = get_1step_sched(device=device)
 
         self.encoder = VAE_encode(vae, copy.deepcopy(vae)).to(device)
         self.decoder = VAE_decode(vae, copy.deepcopy(vae)).to(device)
@@ -596,7 +596,7 @@ def get_1step_sched(device):
     noise_scheduler_1step.alphas_cumprod = noise_scheduler_1step.alphas_cumprod.to(
         device
     )
-    return noise_scheduler_1step
+    return noise_scheduler_1step.to(device)
 
 
 def my_vae_encoder_fwd(self, sample):

@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=gan_exploration    
 #SBATCH --partition=clara
-#SBATCH --output=slurm_res/output_%j.txt    
-#SBATCH --error=slurm_res/error_%j.txt          
+#SBATCH --output=output_%j.txt    
+#SBATCH --error=error_%j.txt          
 #SBATCH --ntasks=1                    
 #SBATCH --cpus-per-task=4            
 #SBATCH --mem=32G                               

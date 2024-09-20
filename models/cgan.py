@@ -50,20 +50,12 @@ class CGAN(pl.LightningModule):
             lpips.LPIPS(net="vgg").to(self.device).requires_grad_(False)
         )
 
-        self.fid = FrechetInceptionDistance(reset_real_features=False)
+        self.fid = FrechetInceptionDistance()
         self.structure_loss = DinoStructureLoss(device=self.device)
 
         self.calculate_scores_during_training = calculate_scores_during_training
 
         self.automatic_optimization = False
-
-    def on_train_start(self):
-        if not self.calculate_scores_during_training:
-            return
-        for fence_imgs in self.trainer.datamodule.train_dataloader()["fence"]:
-            fence_imgs = fence_imgs.to(self.device)
-            fence_imgs = preprocess_for_fid(fence_imgs)
-            self.fid.update(fence_imgs, real=True)
 
     def training_step(self, batch, batch_idx):
         bg_imgs, fence_imgs = batch["background"], batch["fence"]
@@ -141,42 +133,43 @@ class CGAN(pl.LightningModule):
         if not self.calculate_scores_during_training:
             return
 
-        if self.current_epoch % 20 == 0 and self.current_epoch != 0:
-            norm_gen_fences = preprocess_for_fid(generated_fences)
-            self.fid.update(norm_gen_fences, real=False)
-            self.structure_loss.update_dino_struct_loss(bg_imgs, generated_fences)
-
     def on_train_epoch_end(self):
-        if self.current_epoch % 50 == 0 and self.current_epoch != 0:
-            val_dataloader = self.trainer.datamodule.val_dataloader()
-            loader_A = val_dataloader["background"]
-            loader_B = val_dataloader["fence"]
+        if (
+            not self.current_epoch % 20 == 0
+            or self.current_epoch == 0
+            or not self.calculate_scores_during_training
+        ):
+            return
 
-            for batch_A, batch_B in zip(loader_A, loader_B):
-                bg_imgs = batch_A.to(self.device)
-                fence_imgs = batch_B.to(self.device)
+        val_dataloader = self.trainer.datamodule.val_dataloader()
+        loader_A = val_dataloader["background"]
+        loader_B = val_dataloader["fence"]
 
-                fake_fence_imgs = self.generator(bg_imgs)
+        for batch_A, batch_B in zip(loader_A, loader_B):
 
-                grid = make_grid(
-                    torch.cat((bg_imgs, fake_fence_imgs, fence_imgs), dim=0),
-                    nrow=4,
-                    normalize=True,
-                )
+            bg_imgs = batch_A.to(self.device)
+            fence_imgs = batch_B.to(self.device)
+            fake_fence_imgs = self.generator(bg_imgs)
+
+            grid = make_grid(
+                torch.cat((bg_imgs, fake_fence_imgs, fence_imgs), dim=0),
+                nrow=4,
+                normalize=True,
+            )
 
             self.logger.experiment.add_image(
                 "Generated_Images", grid, self.current_epoch
             )
 
-        if (
-            self.current_epoch % 20 == 0
-            and self.current_epoch != 0
-            and self.calculate_scores_during_training
-        ):
+            nrom_fence_imgs = preprocess_for_fid(fence_imgs)
+            norm_fake_fences = preprocess_for_fid(fake_fence_imgs)
+            self.fid.update(nrom_fence_imgs, real=True)
+            self.fid.update(norm_fake_fences, real=False)
             fid_score = self.fid.compute().item()
             self.log("FID", fid_score, on_epoch=True)
             self.fid.reset()
 
+            self.structure_loss.update_dino_struct_loss(bg_imgs, fake_fence_imgs)
             structure_loss = self.structure_loss.compute()
             self.log("DINO", structure_loss, on_epoch=True)
             self.structure_loss.reset()

@@ -4,8 +4,7 @@
 #SBATCH --output=output_%j.txt    
 #SBATCH --error=error_%j.txt          
 #SBATCH --ntasks=1                    
-#SBATCH --cpus-per-task=4            
-#SBATCH --mem=32G                               
+#SBATCH --cpus-per-task=4                                       
 #SBATCH --gres=gpu:v100:1
 #SBATCH --mem-per-gpu=4096    
 #SBATCH --time=48:00:00

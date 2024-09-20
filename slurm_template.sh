@@ -12,7 +12,7 @@
 #SBATCH --mail-type=BEGIN,END,FAIL
 
 # Load necessary modules
-source .venv/bin/activate
+source python_env/bin/activate
 
 # Run your training script
 srun python main.py --model_name=$MODEL_NAME

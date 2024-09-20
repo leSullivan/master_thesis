@@ -40,6 +40,7 @@ from src.config import (
 
 CHECKPOINT_PATH = os.getenv("CHECKPOINT_PATH", "/work/jw018njay-model_checkpoints/")
 
+torch.cuda.empty_cache()
 
 def main(args):
 

@@ -34,7 +34,7 @@ PROMPT_FENCE = "Please provide the path to the fence image"
 
 NORM_TYPE = "instance"
 
-NUM_WORKERS = 6
+NUM_WORKERS = 4
 
 FENCE_IMG_PATH = os.path.join("imgs", "fences")
 BG_IMG_PATH = os.path.join("imgs", "backgrounds")

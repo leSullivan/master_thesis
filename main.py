@@ -225,5 +225,4 @@ if __name__ == "__main__":
         print("Sample images generated successfully.")
     else:
         pl.seed_everything(SEED)
-        torch.use_deterministic_algorithms(True)
         main(args)

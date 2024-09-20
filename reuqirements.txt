@@ -1,0 +1,8 @@
+torch
+torchvision
+tensorboard
+pytorch-lightning
+lpips
+peft
+transformers
+diffusers==0.25.1

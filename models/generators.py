@@ -316,10 +316,10 @@ class SDTurboGenerator(torch.nn.Module):
         self.unet = initialize_unet().to(device)
         # unet.enable_xformers_memory_efficient_attention()
         # unet.enable_gradient_checkpointing()
-        vae = initialize_vae(device)
+        vae = initialize_vae(device).to(device)
         self.vae = vae
 
-        self.scheduler = get_1step_sched(device=device)
+        self.scheduler = get_1step_sched(device=device).to(device)
 
         self.encoder = VAE_encode(vae, copy.deepcopy(vae)).to(device)
         self.decoder = VAE_decode(vae, copy.deepcopy(vae)).to(device)
@@ -330,7 +330,8 @@ class SDTurboGenerator(torch.nn.Module):
             "stabilityai/sd-turbo",
             subfolder="tokenizer",
             use_fast=False,
-        )
+        ).to(device)
+
         text_encoder = CLIPTextModel.from_pretrained(
             "stabilityai/sd-turbo", subfolder="text_encoder"
         ).to(device)
@@ -357,36 +358,36 @@ class SDTurboGenerator(torch.nn.Module):
             0
         ].detach()
 
-    def get_traininable_params(self):
-        # add all unet parameters
-        params_gen = list(self.unet.conv_in.parameters())
-        self.unet.conv_in.requires_grad_(True)
-        self.unet.set_adapters(["default_encoder", "default_decoder", "default_others"])
-        for n, p in self.unet.named_parameters():
-            if "lora" in n and "default" in n:
-                assert p.requires_grad
-                params_gen.append(p)
+    # def get_traininable_params(self):
+    #     # add all unet parameters
+    #     params_gen = list(self.unet.conv_in.parameters())
+    #     self.unet.conv_in.requires_grad_(True)
+    #     self.unet.set_adapters(["default_encoder", "default_decoder", "default_others"])
+    #     for n, p in self.unet.named_parameters():
+    #         if "lora" in n and "default" in n:
+    #             assert p.requires_grad
+    #             params_gen.append(p)
 
-        # add all vae_a2b parameters
-        for n, p in self.vae.named_parameters():
-            if "lora" in n and "vae_skip" in n:
-                assert p.requires_grad
-                params_gen.append(p)
-        params_gen = params_gen + list(self.vae.decoder.skip_conv_1.parameters())
-        params_gen = params_gen + list(self.vae.decoder.skip_conv_2.parameters())
-        params_gen = params_gen + list(self.vae.decoder.skip_conv_3.parameters())
-        params_gen = params_gen + list(self.vae.decoder.skip_conv_4.parameters())
+    #     # add all vae_a2b parameters
+    #     for n, p in self.vae.named_parameters():
+    #         if "lora" in n and "vae_skip" in n:
+    #             assert p.requires_grad
+    #             params_gen.append(p)
+    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_1.parameters())
+    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_2.parameters())
+    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_3.parameters())
+    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_4.parameters())
 
-        # add all vae_b2a parameters
-        for n, p in self.vae.named_parameters():
-            if "lora" in n and "vae_skip" in n:
-                assert p.requires_grad
-                params_gen.append(p)
-        params_gen = params_gen + list(self.vae.decoder.skip_conv_1.parameters())
-        params_gen = params_gen + list(self.vae.decoder.skip_conv_2.parameters())
-        params_gen = params_gen + list(self.vae.decoder.skip_conv_3.parameters())
-        params_gen = params_gen + list(self.vae.decoder.skip_conv_4.parameters())
-        return params_gen
+    #     # add all vae_b2a parameters
+    #     for n, p in self.vae.named_parameters():
+    #         if "lora" in n and "vae_skip" in n:
+    #             assert p.requires_grad
+    #             params_gen.append(p)
+    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_1.parameters())
+    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_2.parameters())
+    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_3.parameters())
+    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_4.parameters())
+    #     return params_gen
 
     def forward(self, x, direction):
         batch_size = x.shape[0]

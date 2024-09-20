@@ -6,7 +6,8 @@
 #SBATCH --ntasks=1                    
 #SBATCH --cpus-per-task=4            
 #SBATCH --mem=32G                               
-#SBATCH --gres=gpu:v100:1         
+#SBATCH --gres=gpu:v100:1
+#SBATCH --mem-per-gpu=4096    
 #SBATCH --time=48:00:00
 #SBATCH --mail-user=john.jaenckel@icloud.com
 #SBATCH --mail-type=BEGIN,END,FAIL

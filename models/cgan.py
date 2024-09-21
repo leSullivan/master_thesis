@@ -138,7 +138,7 @@ class CGAN(pl.LightningModule):
         self.manual_backward(loss_D)
         optimizer_D.step()
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx, dataloader_idx):
         # if (
         #     not self.current_epoch % 20 == 0
         #     or self.current_epoch == 0

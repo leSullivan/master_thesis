@@ -64,14 +64,6 @@ class CGAN(pl.LightningModule):
 
         generated_fences = self.generator(bg_imgs)
 
-        grid = make_grid(
-            torch.cat((generated_fences, fence_imgs), dim=0),
-            nrow=4,
-            normalize=True,
-        )
-
-        self.logger.experiment.add_image("Generated_Images", grid, self.current_epoch)
-
         if self.hparams["d_type"] == "vagan":
             pred_fake = self.discriminator(generated_fences, for_G=True)
             loss_gan = pred_fake.mean()
@@ -139,12 +131,12 @@ class CGAN(pl.LightningModule):
         optimizer_D.step()
 
     def validation_step(self, batch, batch_idx):
-        # if (
-        #     not self.current_epoch % 20 == 0
-        #     or self.current_epoch == 0
-        #     or not self.calculate_scores_during_training
-        # ):
-        #     return
+        if (
+            not self.current_epoch % 20 == 0
+            or self.current_epoch == 0
+            or not self.calculate_scores_during_training
+        ):
+            return
 
         bg_imgs, fence_imgs = batch
 
@@ -156,7 +148,7 @@ class CGAN(pl.LightningModule):
             normalize=True,
         )
 
-        self.logger.experiment.add_image("Validation_Images", grid, self.current_epoch)
+        self.logger.experiment.add_image("Generated_Images", grid, self.current_epoch)
 
         norm_fence_imgs = preprocess_for_fid(fence_imgs)
         norm_fake_fences = preprocess_for_fid(generated_fences)
@@ -167,6 +159,12 @@ class CGAN(pl.LightningModule):
         self.structure_loss.update_dino_struct_loss(bg_imgs, generated_fences)
 
     def on_validation_epoch_end(self):
+        if (
+            not self.current_epoch % 20 == 0
+            or self.current_epoch == 0
+            or not self.calculate_scores_during_training
+        ):
+            return
         fid_score = self.fid.compute().item()
         self.log("FID", fid_score, on_epoch=True)
         self.fid.reset()

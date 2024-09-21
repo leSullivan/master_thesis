@@ -596,7 +596,7 @@ def get_1step_sched(device):
     noise_scheduler_1step.alphas_cumprod = noise_scheduler_1step.alphas_cumprod.to(
         device
     )
-    return noise_scheduler_1step.to(device)
+    return noise_scheduler_1step
 
 
 def my_vae_encoder_fwd(self, sample):

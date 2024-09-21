@@ -42,6 +42,7 @@ CHECKPOINT_PATH = os.getenv("CHECKPOINT_PATH", "/work/jw018njay-model_checkpoint
 
 torch.cuda.empty_cache()
 
+
 def main(args):
 
     data_module = UnpairedImageDataModule(
@@ -82,6 +83,7 @@ def main(args):
         logger=logger,
         accelerator="gpu" if torch.cuda.is_available() else "mps",
         callbacks=[checkpoint_callback],
+        strategy="ddp_find_unused_parameters_true",
     )
 
     trainer.fit(model, data_module)

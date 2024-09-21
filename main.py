@@ -68,7 +68,11 @@ def main(args):
     else:
         model = GAN.to(torch.float32)
 
-    logger = TensorBoardLogger(CHECKPOINT_PATH, name=args.model_name)
+    logger = TensorBoardLogger(
+        CHECKPOINT_PATH,
+        name=f"{args.model_name}",
+        version=f"{args.g_type}_{args.d_type}",
+    )
 
     checkpoint_callback = ModelCheckpoint(
         save_top_k=-1,

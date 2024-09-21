@@ -330,11 +330,11 @@ class SDTurboGenerator(torch.nn.Module):
             "stabilityai/sd-turbo",
             subfolder="tokenizer",
             use_fast=False,
-        ).to(device)
+        )
 
         text_encoder = CLIPTextModel.from_pretrained(
             "stabilityai/sd-turbo", subfolder="text_encoder"
-        ).to(device)
+        )
 
         fence_prompt_tokens = tokenizer(
             prompt_fence,

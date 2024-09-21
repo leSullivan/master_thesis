@@ -1,5 +1,4 @@
 import os
-import torch
 
 SEED = 42
 
@@ -21,13 +20,13 @@ D_USE_SIGMOID = False
 NUM_EPOCHS = 400
 BATCH_SIZE = 10
 
-LR = 0.0002
-BETA1 = 0.5
+LR = 0.00001
+BETA1 = 0.9
 BETA2 = 0.999
-LAMBDA_GAN = 0.5
+LAMBDA_GAN = 1
 LAMBDA_L1 = 1
-LAMBDA_PERCEPTUAL = 5
-LAMBDA_CYCLE = 10
+LAMBDA_PERCEPTUAL = 1
+LAMBDA_CYCLE = 0
 
 PROMPT_BG = "Please provide the path to the background image"
 PROMPT_FENCE = "Please provide the path to the fence image"

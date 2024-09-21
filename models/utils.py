@@ -281,7 +281,7 @@ class DinoStructureLoss:
             self.n += 1
 
     def compute(self):
-        return self.loss / self.n
+        return self.loss / self.n * 100
 
     def reset(self):
         self.loss = 0.0

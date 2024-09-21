@@ -166,7 +166,7 @@ class CGAN(pl.LightningModule):
 
         self.structure_loss.update_dino_struct_loss(bg_imgs, generated_fences)
 
-    def on_validation_epoch_end(self, outputs):
+    def on_validation_epoch_end(self):
         fid_score = self.fid.compute().item()
         self.log("FID", fid_score, on_epoch=True)
         self.fid.reset()

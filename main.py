@@ -70,8 +70,7 @@ def main(args):
 
     logger = TensorBoardLogger(
         CHECKPOINT_PATH,
-        name=f"{args.model_name}",
-        version=f"{args.g_type}_{args.d_type}",
+        name=f"{args.model_name}_{args.g_type}_D_{args.d_type}",
     )
 
     checkpoint_callback = ModelCheckpoint(

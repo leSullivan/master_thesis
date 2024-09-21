@@ -77,16 +77,25 @@ class UnpairedImageDataModule(pl.LightningDataModule):
         return {"background": loader_A, "fence": loader_B}
 
     def val_dataloader(self):
-        loader_A = DataLoader(
-            self.val_bg,
+        val_dataset = PairedImageDataset(self.val_bg, self.val_fence)
+        return DataLoader(
+            val_dataset,
             batch_size=4,
             shuffle=False,
             num_workers=self.num_workers,
         )
-        loader_B = DataLoader(
-            self.train_fence,
-            batch_size=4,
-            shuffle=False,
-            num_workers=self.num_workers,
-        )
-        return {"background": loader_A, "fence": loader_B}
+
+
+class PairedImageDataset(Dataset):
+    def __init__(self, bg_dataset, fence_dataset):
+        self.bg_dataset = bg_dataset
+        self.fence_dataset = fence_dataset
+        assert len(self.bg_dataset) == len(self.fence_dataset), "Datasets must have the same length"
+
+    def __len__(self):
+        return len(self.bg_dataset)
+
+    def __getitem__(self, idx):
+        bg_image = self.bg_dataset[idx]
+        fence_image = self.fence_dataset[idx]
+        return bg_image, fence_image

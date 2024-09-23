@@ -6,7 +6,7 @@
 #SBATCH --nodes=2         
 #SBATCH --ntasks-per-node=1             
 #SBATCH --cpus-per-task=4            
-#SBATCH --mem=32G                               
+#SBATCH --mem=48G                               
 #SBATCH --gres=gpu:v100:1
 #SBATCH --time=48:00:00
 #SBATCH --mail-user=john.jaenckel@icloud.com

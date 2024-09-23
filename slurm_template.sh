@@ -15,4 +15,4 @@
 source python_env/bin/activate
 
 # Run your training script
-srun python main.py --model_name=$MODEL_NAME
+python main.py --model_name=$MODEL_NAME

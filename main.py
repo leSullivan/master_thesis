@@ -87,7 +87,7 @@ def main(args):
         logger=logger,
         accelerator="gpu" if torch.cuda.is_available() else "mps",
         callbacks=[checkpoint_callback],
-        accelerator="ddp",
+        strategy="ddp",
     )
 
     trainer.fit(model, data_module)

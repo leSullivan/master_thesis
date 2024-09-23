@@ -3,7 +3,7 @@
 #SBATCH --partition=clara
 #SBATCH --output=output_%j.txt    
 #SBATCH --error=error_%j.txt 
-#SBATCH --nodes=2         
+#SBATCH --nodes=1         
 #SBATCH --ntasks-per-node=1             
 #SBATCH --cpus-per-task=4            
 #SBATCH --mem=48G                               

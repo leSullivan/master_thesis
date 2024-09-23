@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1                    
 #SBATCH --cpus-per-task=4            
 #SBATCH --mem=32G                               
-#SBATCH --gres=gpu:v100:2  
+#SBATCH --gres=gpu:v100:1
 #SBATCH --time=48:00:00
 #SBATCH --mail-user=john.jaenckel@icloud.com
 #SBATCH --mail-type=BEGIN,END,FAIL
@@ -15,4 +15,4 @@
 source python_env/bin/activate
 
 # Run your training script
-python main.py --model_name=$MODEL_NAME
+python main.py --model_name=$MODEL_NAME --g_type=$G_TYPE --d_type=$D_TYPE

@@ -90,7 +90,9 @@ class PairedImageDataset(Dataset):
     def __init__(self, bg_dataset, fence_dataset):
         self.bg_dataset = bg_dataset
         self.fence_dataset = fence_dataset
-        assert len(self.bg_dataset) == len(self.fence_dataset), "Datasets must have the same length"
+        assert len(self.bg_dataset) == len(
+            self.fence_dataset
+        ), "Datasets must have the same length"
 
     def __len__(self):
         return len(self.bg_dataset)

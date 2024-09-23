@@ -86,10 +86,12 @@ def main(args):
 
     trainer = pl.Trainer(
         max_epochs=args.num_epochs,
+        num_nodes=2,
         log_every_n_steps=1,
         logger=logger,
         accelerator="gpu" if torch.cuda.is_available() else "mps",
         callbacks=[checkpoint_callback],
+        accelerator="ddp",
     )
 
     trainer.fit(model, data_module)

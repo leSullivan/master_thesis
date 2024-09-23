@@ -4,7 +4,7 @@
 #SBATCH --output=output_%j.txt    
 #SBATCH --error=error_%j.txt 
 #SBATCH --nodes=2         
-#SBATCH --ntasks=2                   
+#SBATCH --ntasks-per-node=1             
 #SBATCH --cpus-per-task=4            
 #SBATCH --mem=32G                               
 #SBATCH --gres=gpu:v100:1

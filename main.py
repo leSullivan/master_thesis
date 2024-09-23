@@ -40,10 +40,6 @@ from src.config import (
 
 CHECKPOINT_PATH = os.getenv("CHECKPOINT_PATH", "/work/jw018njay-model_checkpoints/")
 
-# https://github.com/Lightning-AI/pytorch-lightning/issues/5225
-del os.environ["SLURM_NTASKS"]
-del os.environ["SLURM_JOB_NAME"]
-
 torch.cuda.empty_cache()
 
 

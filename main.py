@@ -40,6 +40,10 @@ from src.config import (
 
 CHECKPOINT_PATH = os.getenv("CHECKPOINT_PATH", "/work/jw018njay-model_checkpoints/")
 
+# https://github.com/Lightning-AI/pytorch-lightning/issues/5225
+del os.environ["SLURM_NTASKS"]
+del os.environ["SLURM_JOB_NAME"]
+
 torch.cuda.empty_cache()
 
 
@@ -86,6 +90,7 @@ def main(args):
         logger=logger,
         accelerator="gpu" if torch.cuda.is_available() else "mps",
         callbacks=[checkpoint_callback],
+        d
     )
 
     trainer.fit(model, data_module)

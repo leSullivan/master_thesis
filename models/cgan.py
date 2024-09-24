@@ -26,6 +26,7 @@ class CGAN(pl.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters()
+        self.logger.save_hyperparameters(self.hparams)
 
         self.generator = Generator(
             ngf=ngf,
@@ -44,13 +45,13 @@ class CGAN(pl.LightningModule):
             device=self.device,
         )
 
-        self.criterion_gan = init_gan_loss(d_type=d_type)
-        self.criterion_identity = nn.L1Loss()
+        self.criterion_gan = init_gan_loss(d_type=d_type).requires_grad_(False)
+        self.criterion_identity = nn.L1Loss().requires_grad_(False)
         self.criterion_perceptual = (
             lpips.LPIPS(net="vgg").to(self.device).requires_grad_(False)
         )
 
-        self.fid = FrechetInceptionDistance()
+        self.fid = FrechetInceptionDistance().requires_grad_(False)
         self.structure_loss = DinoStructureLoss(device=self.device)
 
         self.calculate_scores_during_training = calculate_scores_during_training
@@ -73,24 +74,24 @@ class CGAN(pl.LightningModule):
                 pred_fake, torch.ones_like(pred_fake, device=self.device)
             )
 
-        self.log("loss_adv", loss_gan, on_step=True, on_epoch=True)
+        self.log("generator/loss_adv", loss_gan, on_step=True, on_epoch=True)
 
         loss_G = loss_gan * self.hparams["lambda_gan"]
 
         if self.hparams["lambda_identity"] > 0:
             loss_l1 = self.criterion_identity(bg_imgs, generated_fences)
-            self.log("loss_identity", loss_l1, on_step=True, on_epoch=True)
+            self.log("generator/loss_identity", loss_l1, on_step=True, on_epoch=True)
             loss_G += self.hparams["lambda_identity"] * loss_l1
 
         if self.hparams["lambda_perceptual"] > 0:
             loss_perception = self.criterion_perceptual(
                 fence_imgs, generated_fences
             ).mean()
-            self.log("loss_perceptual", loss_l1, on_step=True, on_epoch=True)
+            self.log("generator/loss_perceptual", loss_l1, on_step=True, on_epoch=True)
             loss_G += self.hparams["lambda_perceptual"] * loss_perception
 
         self.log(
-            "loss_G",
+            "generator/loss_G",
             loss_G,
             prog_bar=True,
             on_step=True,
@@ -116,15 +117,17 @@ class CGAN(pl.LightningModule):
                 pred_fake, torch.zeros_like(pred_fake, device=self.device)
             )
 
-        self.log("loss_D_real", loss_real, on_step=True, on_epoch=True)
-        self.log("loss_D_fake", loss_fake, on_step=True, on_epoch=True)
+        self.log("discriminator/loss_D_real", loss_real, on_step=True, on_epoch=True)
+        self.log("discriminator/loss_D_fake", loss_fake, on_step=True, on_epoch=True)
 
         loss_D = (
             loss_real * self.hparams["lambda_gan"]
             + loss_fake * self.hparams["lambda_gan"]
         ) / 2
 
-        self.log("loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True)
+        self.log(
+            "discriminator/loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True
+        )
 
         optimizer_D.zero_grad()
         self.manual_backward(loss_D)
@@ -143,12 +146,14 @@ class CGAN(pl.LightningModule):
         generated_fences = self.generator(bg_imgs)
 
         grid = make_grid(
-            torch.cat((bg_imgs, generated_fences, fence_imgs), dim=0),
+            torch.cat((bg_imgs, generated_fences), dim=0),
             nrow=4,
             normalize=True,
         )
 
-        self.logger.experiment.add_image("Generated_Images", grid, self.current_epoch)
+        self.logger.experiment.add_image(
+            "eval/Generated_Images", grid, self.current_epoch
+        )
 
         norm_fence_imgs = preprocess_for_fid(fence_imgs)
         norm_fake_fences = preprocess_for_fid(generated_fences)
@@ -166,11 +171,11 @@ class CGAN(pl.LightningModule):
         ):
             return
         fid_score = self.fid.compute().item()
-        self.log("FID", fid_score, on_epoch=True)
+        self.log("eval/FID", fid_score, on_epoch=True)
         self.fid.reset()
 
         structure_loss = self.structure_loss.compute()
-        self.log("DINO", structure_loss, on_epoch=True)
+        self.log("eval/DINO", structure_loss, on_epoch=True)
         self.structure_loss.reset()
 
     def configure_optimizers(self):

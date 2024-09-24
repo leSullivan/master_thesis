@@ -26,7 +26,6 @@ class CGAN(pl.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters()
-        self.logger.save_hyperparameters(self.hparams)
 
         self.generator = Generator(
             ngf=ngf,

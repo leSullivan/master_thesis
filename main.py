@@ -73,6 +73,8 @@ def main(args):
         name=f"{args.model_name}_{args.g_type}_{args.d_type}",
     )
 
+    logger.log_hyperparams(args)
+
     checkpoint_callback = ModelCheckpoint(
         save_top_k=-1,
         every_n_epochs=50,

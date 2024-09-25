@@ -47,6 +47,16 @@ class Generator(nn.Module):
                 use_dropout=False,
             )
 
+        elif g_type == "unet-7":
+            self.model = UNetGenerator(
+                input_nc,
+                input_nc,
+                7,
+                kwargs["ngf"],
+                norm_layer,
+                use_dropout=False,
+            )
+
         elif g_type == "unet-dropout":
             self.model = UNetGenerator(
                 input_nc,

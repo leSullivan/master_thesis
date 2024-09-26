@@ -44,12 +44,10 @@ class CGAN(pl.LightningModule):
 
         self.criterion_gan = init_gan_loss(d_type=d_type).requires_grad_(False)
         self.criterion_identity = nn.L1Loss().requires_grad_(False)
-        self.criterion_perceptual = (
-            lpips.LPIPS(net="vgg").to(self.device).requires_grad_(False)
-        )
+        self.criterion_perceptual = lpips.LPIPS(net="vgg").requires_grad_(False)
 
         self.fid = FrechetInceptionDistance().requires_grad_(False)
-        self.structure_loss = DinoStructureLoss(device=self.device)
+        self.structure_loss = DinoStructureLoss()
 
         self.calculate_scores_during_training = calculate_scores_during_training
 

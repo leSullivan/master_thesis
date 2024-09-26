@@ -29,7 +29,6 @@ class TurboCycleGAN(pl.LightningModule):
         self.save_hyperparameters()
 
         self.generator = SDTurboGenerator(
-            device=self.device,
             prompt_bg=prompt_bg,
             prompt_fence=prompt_fence,
         )
@@ -40,7 +39,6 @@ class TurboCycleGAN(pl.LightningModule):
             norm_type=norm_type,
             d_type=d_type,
             d_use_sigmoid=d_use_sigmoid,
-            device=self.device,
         )
 
         self.discriminator_Fence = Discriminator(
@@ -49,18 +47,17 @@ class TurboCycleGAN(pl.LightningModule):
             norm_type=norm_type,
             d_type=d_type,
             d_use_sigmoid=d_use_sigmoid,
-            device=self.device,
         )
 
         self.criterion_gan = self.init_adv_loss()
         self.criterion_cycle = nn.L1Loss()
-        self.criterion_perceptual = lpips.LPIPS(net="vgg").to(self.device)
+        self.criterion_perceptual = lpips.LPIPS(net="vgg")
 
         self.lambda_cycle = lambda_cycle
         self.lambda_identity = lambda_identity
 
         self.fid = FrechetInceptionDistance()
-        self.structure_loss = DinoStructureLoss(device=self.device)
+        self.structure_loss = DinoStructureLoss()
 
         self.calculate_scores_during_training = calculate_scores_during_training
         self.automatic_optimization = False

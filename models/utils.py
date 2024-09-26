@@ -5,6 +5,11 @@ import torchvision
 import torch.nn.functional as F
 
 
+# needed as device isnt available in module.init()
+def get_device():
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 def get_norm_layer(norm_type):
     if norm_type == "batch":
         norm_layer = functools.partial(nn.BatchNorm2d, affine=True)
@@ -48,7 +53,7 @@ class VitExtractor:
 
     def __init__(self, model_name, device):
         # pdb.set_trace()
-        self.model = torch.hub.load("facebookresearch/dino:main", model_name).to(device)
+        self.model = torch.hub.load("facebookresearch/dino:main", model_name)
         self.device = device
         self.model.eval()
         self.model_name = model_name
@@ -240,7 +245,9 @@ class VitExtractor:
 
 
 class DinoStructureLoss:
-    def __init__(self, device):
+    def __init__(self):
+
+        device = get_device()
 
         self.loss = 0.0
         self.n = 0

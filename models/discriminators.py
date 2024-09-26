@@ -4,7 +4,7 @@ import torch.nn as nn
 import pytorch_lightning as pl
 
 from src.config import IMG_CH
-from .utils import get_norm_layer
+from .utils import get_norm_layer, get_device
 
 
 class Discriminator(pl.LightningModule):
@@ -47,11 +47,12 @@ class Discriminator(pl.LightningModule):
         elif d_type == "vagan":
             import vision_aided_loss
 
+            device = get_device()
+
             self.model = vision_aided_loss.Discriminator(
-                cv_type="clip", loss_type="multilevel_sigmoid_s", device=self.device
+                cv_type="clip", loss_type="multilevel_sigmoid_s", device=device
             )
             self.model.cv_ensemble.requires_grad_(False)
-
         else:
             raise ValueError(f"Discriminator type '{d_type}' is not recognized.")
 

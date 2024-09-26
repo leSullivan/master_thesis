@@ -48,7 +48,6 @@ class CycleGAN(pl.LightningModule):
             norm_type=norm_type,
             d_type=d_type,
             d_use_sigmoid=d_use_sigmoid,
-            device=self.device,
         )
         self.discriminator_Fence = Discriminator(
             ndf=ndf,
@@ -56,19 +55,15 @@ class CycleGAN(pl.LightningModule):
             norm_type=norm_type,
             d_type=d_type,
             d_use_sigmoid=d_use_sigmoid,
-            device=self.device,
         )
 
         self.criterion_gan = init_gan_loss(d_type=d_type)
         self.criterion_cycle = nn.L1Loss()
         self.criterion_identity = nn.L1Loss()
-        self.criterion_perceptual = lpips.LPIPS(net="vgg").to(self.device)
-
-        self.lambda_cycle = lambda_cycle
-        self.lambda_identity = lambda_identity
+        self.criterion_perceptual = lpips.LPIPS(net="vgg")
 
         self.fid = FrechetInceptionDistance()
-        self.structure_loss = DinoStructureLoss(device=self.device)
+        self.structure_loss = DinoStructureLoss()
 
         self.calculate_scores_during_training = calculate_scores_during_training
         self.automatic_optimization = False
@@ -170,11 +165,15 @@ class CycleGAN(pl.LightningModule):
         )
         loss_D_Fence = (loss_D_fence_imgs + loss_D_fake_fence) / 2
 
-        self.log("discriminator/loss_D_Fence", loss_D_Fence, on_step=True, on_epoch=True)
+        self.log(
+            "discriminator/loss_D_Fence", loss_D_Fence, on_step=True, on_epoch=True
+        )
 
         loss_D = loss_D_Bg + loss_D_Fence
 
-        self.log("discriminator/loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True)
+        self.log(
+            "discriminator/loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True
+        )
 
         optimizer_D.zero_grad()
         self.manual_backward(loss_D)

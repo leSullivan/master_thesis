@@ -10,7 +10,7 @@ from peft import LoraConfig
 
 from src.config import IMG_CH
 
-from .utils import get_norm_layer
+from .utils import get_norm_layer, get_device
 
 
 class Generator(pl.LightningModule):
@@ -319,21 +319,22 @@ class UnetSkipConnectionBlock(pl.LightningModule):
 class SDTurboGenerator(pl.LightningModule):
     def __init__(
         self,
-        device,
         prompt_bg,
         prompt_fence,
     ):
         super(SDTurboGenerator, self).__init__()
-        self.unet = initialize_unet().to(device)
+        device = get_device()
+
+        self.unet = initialize_unet()
         # unet.enable_xformers_memory_efficient_attention()
         # unet.enable_gradient_checkpointing()
-        vae = initialize_vae(device).to(device)
+        vae = initialize_vae()
         self.vae = vae
 
-        self.scheduler = get_1step_sched(device=device)
+        self.scheduler = get_1step_sched(device)
 
-        self.encoder = VAE_encode(vae, copy.deepcopy(vae)).to(device)
-        self.decoder = VAE_decode(vae, copy.deepcopy(vae)).to(device)
+        self.encoder = VAE_encode(vae, copy.deepcopy(vae))
+        self.decoder = VAE_decode(vae, copy.deepcopy(vae))
 
         self.timesteps = torch.tensor([999], device=device).long()
 
@@ -354,7 +355,7 @@ class SDTurboGenerator(pl.LightningModule):
             truncation=True,
             return_tensors="pt",
         ).input_ids[0]
-        self.bg2fence_emb = text_encoder(fence_prompt_tokens.to(device).unsqueeze(0))[
+        self.bg2fence_emb = text_encoder(fence_prompt_tokens.unsqueeze(0))[
             0
         ].detach()
 
@@ -365,7 +366,7 @@ class SDTurboGenerator(pl.LightningModule):
             truncation=True,
             return_tensors="pt",
         ).input_ids[0]
-        self.fence2bg_emb = text_encoder(bg_prompt_tokens.to(device).unsqueeze(0))[
+        self.fence2bg_emb = text_encoder(bg_prompt_tokens.unsqueeze(0))[
             0
         ].detach()
 
@@ -539,7 +540,7 @@ def initialize_unet(rank=8, return_lora_module_names=False):
         return unet
 
 
-def initialize_vae(device, rank=4, return_lora_module_names=False):
+def initialize_vae(rank=4, return_lora_module_names=False):
     vae = AutoencoderKL.from_pretrained("stabilityai/sd-turbo", subfolder="vae")
     vae.requires_grad_(False)
     vae.encoder.forward = my_vae_encoder_fwd.__get__(vae.encoder, vae.encoder.__class__)
@@ -547,26 +548,18 @@ def initialize_vae(device, rank=4, return_lora_module_names=False):
     vae.requires_grad_(True)
     vae.train()
     # add the skip connection convs
-    vae.decoder.skip_conv_1 = (
-        torch.nn.Conv2d(512, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
-        .to(device)
-        .requires_grad_(True)
-    )
-    vae.decoder.skip_conv_2 = (
-        torch.nn.Conv2d(256, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
-        .to(device)
-        .requires_grad_(True)
-    )
-    vae.decoder.skip_conv_3 = (
-        torch.nn.Conv2d(128, 512, kernel_size=(1, 1), stride=(1, 1), bias=False)
-        .to(device)
-        .requires_grad_(True)
-    )
-    vae.decoder.skip_conv_4 = (
-        torch.nn.Conv2d(128, 256, kernel_size=(1, 1), stride=(1, 1), bias=False)
-        .to(device)
-        .requires_grad_(True)
-    )
+    vae.decoder.skip_conv_1 = torch.nn.Conv2d(
+        512, 512, kernel_size=(1, 1), stride=(1, 1), bias=False
+    ).requires_grad_(True)
+    vae.decoder.skip_conv_2 = torch.nn.Conv2d(
+        256, 512, kernel_size=(1, 1), stride=(1, 1), bias=False
+    ).requires_grad_(True)
+    vae.decoder.skip_conv_3 = torch.nn.Conv2d(
+        128, 512, kernel_size=(1, 1), stride=(1, 1), bias=False
+    ).requires_grad_(True)
+    vae.decoder.skip_conv_4 = torch.nn.Conv2d(
+        128, 256, kernel_size=(1, 1), stride=(1, 1), bias=False
+    ).requires_grad_(True)
     torch.nn.init.constant_(vae.decoder.skip_conv_1.weight, 1e-5)
     torch.nn.init.constant_(vae.decoder.skip_conv_2.weight, 1e-5)
     torch.nn.init.constant_(vae.decoder.skip_conv_3.weight, 1e-5)
@@ -600,13 +593,11 @@ def initialize_vae(device, rank=4, return_lora_module_names=False):
 
 
 def get_1step_sched(device):
+
     noise_scheduler_1step = DDPMScheduler.from_pretrained(
         "stabilityai/sd-turbo", subfolder="scheduler"
     )
     noise_scheduler_1step.set_timesteps(1, device=device)
-    noise_scheduler_1step.alphas_cumprod = noise_scheduler_1step.alphas_cumprod.to(
-        device
-    )
     return noise_scheduler_1step
 
 

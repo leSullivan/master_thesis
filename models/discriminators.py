@@ -51,7 +51,7 @@ class Discriminator(nn.Module):
 
             self.model = vision_aided_loss.Discriminator(
                 cv_type="clip", loss_type="multilevel_sigmoid_s", device=self.device
-            )
+            ).to(self.device)
             self.model.cv_ensemble.requires_grad_(False)
 
         else:

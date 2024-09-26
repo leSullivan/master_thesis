@@ -77,7 +77,7 @@ def main(args):
 
     checkpoint_callback = ModelCheckpoint(
         save_top_k=-1,
-        every_n_epochs=50,
+        every_n_epochs=100,
         filename="{epoch:04d}",
         save_last=True,
     )

@@ -1,5 +1,6 @@
 import torch
 import copy
+import pytorch_lightning as pl
 import torch.nn as nn
 import functools
 
@@ -12,7 +13,7 @@ from src.config import IMG_CH
 from .utils import get_norm_layer
 
 
-class Generator(nn.Module):
+class Generator(pl.LightningModule):
     def __init__(
         self,
         g_type,
@@ -75,7 +76,7 @@ class Generator(nn.Module):
 
 
 # https://github.com/NVIDIA/pix2pixHD/blob/master/models/networks.py
-class ResNetGenerator(nn.Module):
+class ResNetGenerator(pl.LightningModule):
     def __init__(
         self,
         ngf,
@@ -142,7 +143,7 @@ class ResNetGenerator(nn.Module):
 
 
 # https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
-class UNetGenerator(nn.Module):
+class UNetGenerator(pl.LightningModule):
     def __init__(
         self,
         input_nc,
@@ -197,7 +198,7 @@ class UNetGenerator(nn.Module):
 
 
 # https://github.com/NVIDIA/pix2pixHD/blob/master/models/networks.py
-class ResnetBlock(nn.Module):
+class ResnetBlock(pl.LightningModule):
     def __init__(self, dim, padding_type, norm_layer, use_dropout=False):
         super(ResnetBlock, self).__init__()
         self.conv_block = self.build_conv_block(
@@ -243,7 +244,7 @@ class ResnetBlock(nn.Module):
 
 
 # https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
-class UnetSkipConnectionBlock(nn.Module):
+class UnetSkipConnectionBlock(pl.LightningModule):
 
     def __init__(
         self,
@@ -315,7 +316,7 @@ class UnetSkipConnectionBlock(nn.Module):
 
 # Diffusion Generator
 # https://github.com/GaParmar/img2img-turbo/blob/main/src/cyclegan_turbo.py
-class SDTurboGenerator(torch.nn.Module):
+class SDTurboGenerator(pl.LightningModule):
     def __init__(
         self,
         device,
@@ -429,7 +430,7 @@ class SDTurboGenerator(torch.nn.Module):
         return x_out_decoded
 
 
-class VAE_encode(nn.Module):
+class VAE_encode(pl.LightningModule):
     def __init__(self, vae_BgToFence, vae_Fence2Bg):
         super(VAE_encode, self).__init__()
         self.vae_BgToFence = vae_BgToFence
@@ -444,7 +445,7 @@ class VAE_encode(nn.Module):
         return _vae.encode(x).latent_dist.sample() * _vae.config.scaling_factor
 
 
-class VAE_decode(nn.Module):
+class VAE_decode(pl.LightningModule):
     def __init__(self, vae_BgToFence, vae_Fence2Bg):
         super(VAE_decode, self).__init__()
         self.vae_BgToFence = vae_BgToFence

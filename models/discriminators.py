@@ -1,13 +1,13 @@
 import functools
 import numpy as np
 import torch.nn as nn
-import torch.nn.functional as F
+import pytorch_lightning as pl
 
 from src.config import IMG_CH
 from .utils import get_norm_layer
 
 
-class Discriminator(nn.Module):
+class Discriminator(pl.LightningModule):
     def __init__(
         self,
         ndf,
@@ -15,12 +15,10 @@ class Discriminator(nn.Module):
         norm_type,
         d_type,
         d_use_sigmoid,
-        device,
         input_channels=IMG_CH,
     ):
         super(Discriminator, self).__init__()
         self.d_use_sigmoid = d_use_sigmoid
-        self.device = device
         self.d_type = d_type
 
         norm_layer = get_norm_layer(norm_type)
@@ -51,9 +49,9 @@ class Discriminator(nn.Module):
 
             self.model = vision_aided_loss.Discriminator(
                 cv_type="clip", loss_type="multilevel_sigmoid_s", device=self.device
-            ).to(self.device)
+            )
             self.model.cv_ensemble.requires_grad_(False)
-            self.model.cv_ensemble.to(self.device)
+            self.model.cv_ensemble
 
         else:
             raise ValueError(f"Discriminator type '{d_type}' is not recognized.")
@@ -67,7 +65,7 @@ class Discriminator(nn.Module):
 
 
 # https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
-class NLayerDiscriminator(nn.Module):
+class NLayerDiscriminator(pl.LightningModule):
     def __init__(
         self, ndf, n_layers, norm_layer, input_nc, use_sigmoid=False, use_patches=True
     ):
@@ -118,7 +116,7 @@ class NLayerDiscriminator(nn.Module):
 
 
 # https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py
-class PixelDiscriminator(nn.Module):
+class PixelDiscriminator(pl.LightningModule):
     def __init__(self, input_nc, ndf, norm_layer):
 
         super(PixelDiscriminator, self).__init__()

@@ -32,7 +32,6 @@ class CGAN(pl.LightningModule):
             n_downsampling=n_downsampling,
             norm_type=norm_type,
             g_type=g_type,
-            device=self.device,
         )
 
         self.discriminator = Discriminator(
@@ -41,7 +40,6 @@ class CGAN(pl.LightningModule):
             norm_type=norm_type,
             d_type=d_type,
             d_use_sigmoid=d_use_sigmoid,
-            device=self.device,
         )
 
         self.criterion_gan = init_gan_loss(d_type=d_type).requires_grad_(False)

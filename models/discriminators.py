@@ -51,7 +51,6 @@ class Discriminator(pl.LightningModule):
                 cv_type="clip", loss_type="multilevel_sigmoid_s", device=self.device
             )
             self.model.cv_ensemble.requires_grad_(False)
-            self.model.cv_ensemble
 
         else:
             raise ValueError(f"Discriminator type '{d_type}' is not recognized.")

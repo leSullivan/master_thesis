@@ -51,7 +51,7 @@ class TurboCycleGAN(pl.LightningModule):
 
         self.criterion_gan = self.init_adv_loss()
         self.criterion_cycle = nn.L1Loss()
-        self.criterion_perceptual = lpips.LPIPS(net="vgg")
+        self.criterion_perceptual = lpips.LPIPS(net="vgg").requires_grad_(False)
 
         self.lambda_cycle = lambda_cycle
         self.lambda_identity = lambda_identity
@@ -99,10 +99,14 @@ class TurboCycleGAN(pl.LightningModule):
         self.log("generator/loss_cycle", loss_cycle, on_step=True, on_epoch=True)
 
         # adversarial loss
-        pred_fake_fence = self.discriminator_Fence(fake_fences)
-        loss_gan_Bg2Fence = self.criterion_gan(
-            pred_fake_fence, torch.ones_like(pred_fake_fence)
-        )
+        if self.hparams["d_type"] == "vagan":
+            pred_fake = self.discriminator_Fence(fake_fences, for_G=True)
+            loss_gan_Bg2Fence = pred_fake.mean()
+        else:
+            pred_fake = self.discriminator_Fence(fake_fences)
+            loss_gan_Bg2Fence = self.criterion_gan(
+                pred_fake, torch.ones_like(pred_fake, device=self.device)
+            )
         self.log(
             "generator/loss_adv_Bg2Fence",
             loss_gan_Bg2Fence,
@@ -110,10 +114,14 @@ class TurboCycleGAN(pl.LightningModule):
             on_epoch=True,
         )
 
-        pred_fake_bg = self.discriminator_Bg(fake_bgs)
-        loss_gan_Fence2Bg = self.criterion_gan(
-            pred_fake_bg, torch.ones_like(pred_fake_bg)
-        )
+        if self.hparams["d_type"] == "vagan":
+            pred_fake = self.discriminator_Bg(fake_bgs, for_G=True)
+            loss_gan_Fence2Bg = pred_fake.mean()
+        else:
+            pred_fake = self.discriminator_Bg(fake_bgs)
+            loss_gan_Fence2Bg = self.criterion_gan(
+                pred_fake, torch.ones_like(pred_fake, device=self.device)
+            )
         self.log(
             "generator/loss_adv_Fence2Bg",
             loss_gan_Fence2Bg,
@@ -143,24 +151,40 @@ class TurboCycleGAN(pl.LightningModule):
 
         # ----------------------------------------------------------------------------------
 
-        pred_bg_imgs = self.discriminator_Bg(bg_imgs)
-        pred_fake_bg = self.discriminator_Bg(fake_bgs.detach())
-        loss_D_bg_imgs = self.criterion_gan(pred_bg_imgs, torch.ones_like(pred_bg_imgs))
-        loss_D_fake_bg = self.criterion_gan(
-            pred_fake_bg, torch.zeros_like(pred_fake_bg)
-        )
+        if self.hparams["d_type"] == "vagan":
+            pred_real = self.discriminator_Bg(bg_imgs, for_real=True)
+            pred_fake = self.discriminator_Bg(fake_bgs.detach(), for_real=False)
+            loss_D_bg_imgs = pred_real.mean()
+            loss_D_fake_bg = pred_fake.mean()
+        else:
+            pred_real = self.discriminator_Bg(bg_imgs, for_real=True)
+            pred_fake = self.discriminator_Bg(fake_bgs.detach(), for_real=False)
+            loss_D_bg_imgs = self.criterion_gan(
+                pred_real, torch.ones_like(pred_real, device=self.device)
+            )
+            loss_D_fake_bg = self.criterion_gan(
+                pred_fake, torch.zeros_like(pred_fake, device=self.device)
+            )
+
         loss_D_Bg = (loss_D_bg_imgs + loss_D_fake_bg) / 2
 
         self.log("discriminator/loss_D_Bg", loss_D_Bg, on_step=True, on_epoch=True)
 
-        pred_fence_imgs = self.discriminator_Fence(fence_imgs)
-        pred_fake_fence = self.discriminator_Fence(fake_fences.detach())
-        loss_D_fence_imgs = self.criterion_gan(
-            pred_fence_imgs, torch.ones_like(pred_fence_imgs)
-        )
-        loss_D_fake_fence = self.criterion_gan(
-            pred_fake_fence, torch.zeros_like(pred_fake_fence)
-        )
+        if self.hparams["d_type"] == "vagan":
+            pred_real = self.discriminator_Fence(fence_imgs, for_real=True)
+            pred_fake = self.discriminator_Fence(fake_fences.detach(), for_real=False)
+            loss_D_fence_imgs = pred_real.mean()
+            loss_D_fake_fence = pred_fake.mean()
+        else:
+            pred_real = self.discriminator_Fence(fence_imgs, for_real=True)
+            pred_fake = self.discriminator_Fence(fake_fences.detach(), for_real=False)
+            loss_D_fence_imgs = self.criterion_gan(
+                pred_real, torch.ones_like(pred_real, device=self.device)
+            )
+            loss_D_fake_fence = self.criterion_gan(
+                pred_fake, torch.zeros_like(pred_fake, device=self.device)
+            )
+
         loss_D_Fence = (loss_D_fence_imgs + loss_D_fake_fence) / 2
 
         self.log(

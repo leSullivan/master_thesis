@@ -42,8 +42,8 @@ class CGAN(pl.LightningModule):
             d_use_sigmoid=d_use_sigmoid,
         )
 
-        self.criterion_gan = init_gan_loss(d_type=d_type).requires_grad_(False)
-        self.criterion_identity = nn.L1Loss().requires_grad_(False)
+        self.criterion_gan = init_gan_loss(d_type=d_type)
+        self.criterion_identity = nn.L1Loss()
         self.criterion_perceptual = lpips.LPIPS(net="vgg").requires_grad_(False)
 
         self.fid = FrechetInceptionDistance().requires_grad_(False)

@@ -6,3 +6,4 @@ lpips
 peft
 transformers
 diffusers==0.25.1
+vision_aided_loss

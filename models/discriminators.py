@@ -53,6 +53,7 @@ class Discriminator(nn.Module):
                 cv_type="clip", loss_type="multilevel_sigmoid_s", device=self.device
             ).to(self.device)
             self.model.cv_ensemble.requires_grad_(False)
+            self.model.cv_ensemble.to(self.device)
 
         else:
             raise ValueError(f"Discriminator type '{d_type}' is not recognized.")
@@ -60,7 +61,8 @@ class Discriminator(nn.Module):
     def forward(self, x, **kwargs):
         if self.d_type == "vagan":
             output = self.model(x, **kwargs)
-        output = self.model(x)
+        else:
+            output = self.model(x)
         return output
 
 

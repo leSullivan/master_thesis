@@ -20,8 +20,6 @@ class CycleGAN(pl.LightningModule):
         g_type,
         ngf,
         n_downsampling,
-        lambda_cycle,
-        lambda_identity,
         calculate_scores_during_training,
         *args,
         **kwargs,
@@ -141,10 +139,9 @@ class CycleGAN(pl.LightningModule):
         )
 
         loss_G = (
-            loss_gan_Bg2Fence
-            + loss_gan_Fence2Bg
-            + self.lambda_cycle * loss_cycle
-            + self.lambda_identity * loss_identity
+            self.hparams["lambda_gan"](loss_gan_Bg2Fence + loss_gan_Fence2Bg)
+            + self.hparams["lambda_cycle"] * loss_cycle
+            + self.hparams["lambda_identity"] * loss_identity
         )
 
         self.log("generator/loss_G", loss_G, prog_bar=True, on_step=True, on_epoch=True)
@@ -187,7 +184,7 @@ class CycleGAN(pl.LightningModule):
             loss_D_fake_fence = self.criterion_gan(
                 pred_fake, torch.zeros_like(pred_fake, device=self.device)
             )
-            
+
         loss_D_Fence = (loss_D_fence_imgs + loss_D_fake_fence) / 2
 
         self.log(

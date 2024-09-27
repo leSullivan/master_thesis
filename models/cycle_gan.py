@@ -139,7 +139,7 @@ class CycleGAN(pl.LightningModule):
         )
 
         loss_G = (
-            self.hparams["lambda_gan"](loss_gan_Bg2Fence + loss_gan_Fence2Bg)
+            self.hparams["lambda_gan"] * (loss_gan_Bg2Fence + loss_gan_Fence2Bg)
             + self.hparams["lambda_cycle"] * loss_cycle
             + self.hparams["lambda_identity"] * loss_identity
         )

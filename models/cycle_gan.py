@@ -204,12 +204,12 @@ class CycleGAN(pl.LightningModule):
         optimizer_D.step()
 
     def validation_step(self, batch, batch_idx):
-        if (
-            not self.current_epoch % 20 == 0
-            or self.current_epoch == 0
-            or not self.calculate_scores_during_training
-        ):
-            return
+        # if (
+        #     not self.current_epoch % 20 == 0
+        #     or self.current_epoch == 0
+        #     or not self.calculate_scores_during_training
+        # ):
+        #     return
 
         bg_imgs, fence_imgs = batch
 

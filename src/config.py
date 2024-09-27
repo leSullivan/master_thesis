@@ -23,9 +23,9 @@ BATCH_SIZE = 10
 LR = 0.00001
 BETA1 = 0.9
 BETA2 = 0.999
-LAMBDA_GAN = 1
+LAMBDA_GAN = 0.5
 LAMBDA_L1 = 1
-LAMBDA_PERCEPTUAL = 1
+LAMBDA_PERCEPTUAL = 5
 LAMBDA_CYCLE = 0
 
 PROMPT_BG = "Please provide the path to the background image"

@@ -115,10 +115,7 @@ class CGAN(pl.LightningModule):
         self.log("discriminator/loss_D_real", loss_real, on_step=True, on_epoch=True)
         self.log("discriminator/loss_D_fake", loss_fake, on_step=True, on_epoch=True)
 
-        loss_D = (
-            loss_real * self.hparams["lambda_gan"]
-            + loss_fake * self.hparams["lambda_gan"]
-        ) / 2
+        loss_D = (loss_real + loss_fake) * self.hparams["lambda_gan"]
 
         self.log(
             "discriminator/loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True

@@ -166,7 +166,7 @@ class TurboCycleGAN(pl.LightningModule):
                 pred_fake, torch.zeros_like(pred_fake, device=self.device)
             )
 
-        loss_D_Bg = (loss_D_bg_imgs + loss_D_fake_bg) / 2
+        loss_D_Bg = (loss_D_bg_imgs + loss_D_fake_bg) * self.hparams["lambda_gan"]
 
         self.log("discriminator/loss_D_Bg", loss_D_Bg, on_step=True, on_epoch=True)
 
@@ -185,7 +185,9 @@ class TurboCycleGAN(pl.LightningModule):
                 pred_fake, torch.zeros_like(pred_fake, device=self.device)
             )
 
-        loss_D_Fence = (loss_D_fence_imgs + loss_D_fake_fence) / 2
+        loss_D_Fence = (loss_D_fence_imgs + loss_D_fake_fence) * self.hparams[
+            "lambda_gan"
+        ]
 
         self.log(
             "discriminator/loss_D_Fence", loss_D_Fence, on_step=True, on_epoch=True

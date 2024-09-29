@@ -24,12 +24,12 @@ class Generator(pl.LightningModule):
 
         norm_layer = get_norm_layer(kwargs["norm_type"])
 
-        if g_type == "resnet-6":
+        if g_type == "3-resnet-6":
             self.model = ResNetGenerator(
                 kwargs["ngf"], kwargs["n_downsampling"], norm_layer, input_nc
             )
 
-        elif g_type == "resnet-9":
+        elif g_type == "3-resnet-9":
             self.model = ResNetGenerator(
                 kwargs["ngf"],
                 kwargs["n_downsampling"],
@@ -58,11 +58,21 @@ class Generator(pl.LightningModule):
                 use_dropout=False,
             )
 
-        elif g_type == "unet-256":
+        elif g_type == "unet_256":
             self.model = UNetGenerator(
                 input_nc,
                 input_nc,
                 8,
+                kwargs["ngf"],
+                norm_layer,
+                use_dropout=False,
+            )
+
+        elif g_type == "unet_512":
+            self.model = UNetGenerator(
+                input_nc,
+                input_nc,
+                9,
                 kwargs["ngf"],
                 norm_layer,
                 use_dropout=False,

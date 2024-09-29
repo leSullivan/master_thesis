@@ -42,11 +42,13 @@ class UnpairedImageDataModule(pl.LightningDataModule):
 
         self.transform = transforms.Compose(
             [
-                transforms.Resize((img_h, img_w)),
+                # transforms.Resize((img_h, img_w)),
+                transforms.CenterCrop((img_h, img_w)),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,) * IMG_CH, (0.5,) * IMG_CH),
             ]
         )
+
 
     def setup(self, stage=None):
         if stage == "fit" or stage is None:

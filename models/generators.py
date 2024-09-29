@@ -90,56 +90,61 @@ class ResNetGenerator(pl.LightningModule):
         super(ResNetGenerator, self).__init__()
         activation = nn.ReLU(True)
 
-        model = [
+        self.initial_layers = nn.Sequential(
             nn.ReflectionPad2d(3),
             nn.Conv2d(input_channels, ngf, kernel_size=7, padding=0),
             norm_layer(ngf),
-            activation,
-        ]
-        ### downsample
+            activation
+        )
+
+        # Downsample layers
+        self.downsample_layers = nn.ModuleList()
         for i in range(n_downsampling):
             mult = 2**i
-            model += [
-                nn.Conv2d(
-                    ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1
-                ),
+            self.downsample_layers.append(nn.Sequential(
+                nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1),
                 norm_layer(ngf * mult * 2),
-                activation,
-            ]
+                activation
+            ))
 
-        ### resnet blocks
+        # ResNet blocks
+        self.resnet_blocks = nn.ModuleList()
         mult = 2**n_downsampling
         for i in range(n_blocks):
-            model += [
-                ResnetBlock(
-                    ngf * mult, padding_type=padding_type, norm_layer=norm_layer
-                )
-            ]
+            self.resnet_blocks.append(ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer))
 
-        ### upsample
+        # Upsample layers
+        self.upsample_layers = nn.ModuleList()
         for i in range(n_downsampling):
             mult = 2 ** (n_downsampling - i)
-            model += [
-                nn.ConvTranspose2d(
-                    ngf * mult,
-                    int(ngf * mult / 2),
-                    kernel_size=3,
-                    stride=2,
-                    padding=1,
-                    output_padding=1,
-                ),
+            self.upsample_layers.append(nn.Sequential(
+                nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2), kernel_size=3, stride=2, padding=1, output_padding=1),
                 norm_layer(int(ngf * mult / 2)),
-                activation,
-            ]
-        model += [
+                activation
+            ))
+
+        self.final_layers = nn.Sequential(
             nn.ReflectionPad2d(3),
             nn.Conv2d(ngf, input_channels, kernel_size=7, padding=0),
-            nn.Tanh(),
-        ]
-        self.model = nn.Sequential(*model)
+            nn.Tanh()
+        )
 
     def forward(self, input):
-        return self.model(input)
+        x = self.initial_layers(input)
+        
+        # Downsample
+        for layer in self.downsample_layers:
+            x = layer(x)
+        
+        # ResNet blocks
+        for block in self.resnet_blocks:
+            x = block(x)
+        
+        # Upsample
+        for layer in self.upsample_layers:
+            x = layer(x)
+        
+        return self.final_layers(x)
 
 
 # https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix/blob/master/models/networks.py

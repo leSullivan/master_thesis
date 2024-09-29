@@ -48,11 +48,21 @@ class Generator(pl.LightningModule):
                 use_dropout=False,
             )
 
-        elif g_type == "unet-7":
+        elif g_type == "unet_128":
             self.model = UNetGenerator(
                 input_nc,
                 input_nc,
                 7,
+                kwargs["ngf"],
+                norm_layer,
+                use_dropout=False,
+            )
+
+        elif g_type == "unet-256":
+            self.model = UNetGenerator(
+                input_nc,
+                input_nc,
+                8,
                 kwargs["ngf"],
                 norm_layer,
                 use_dropout=False,
@@ -94,56 +104,73 @@ class ResNetGenerator(pl.LightningModule):
             nn.ReflectionPad2d(3),
             nn.Conv2d(input_channels, ngf, kernel_size=7, padding=0),
             norm_layer(ngf),
-            activation
+            activation,
         )
 
         # Downsample layers
         self.downsample_layers = nn.ModuleList()
         for i in range(n_downsampling):
             mult = 2**i
-            self.downsample_layers.append(nn.Sequential(
-                nn.Conv2d(ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1),
-                norm_layer(ngf * mult * 2),
-                activation
-            ))
+            self.downsample_layers.append(
+                nn.Sequential(
+                    nn.Conv2d(
+                        ngf * mult, ngf * mult * 2, kernel_size=3, stride=2, padding=1
+                    ),
+                    norm_layer(ngf * mult * 2),
+                    activation,
+                )
+            )
 
         # ResNet blocks
         self.resnet_blocks = nn.ModuleList()
         mult = 2**n_downsampling
         for i in range(n_blocks):
-            self.resnet_blocks.append(ResnetBlock(ngf * mult, padding_type=padding_type, norm_layer=norm_layer))
+            self.resnet_blocks.append(
+                ResnetBlock(
+                    ngf * mult, padding_type=padding_type, norm_layer=norm_layer
+                )
+            )
 
         # Upsample layers
         self.upsample_layers = nn.ModuleList()
         for i in range(n_downsampling):
             mult = 2 ** (n_downsampling - i)
-            self.upsample_layers.append(nn.Sequential(
-                nn.ConvTranspose2d(ngf * mult, int(ngf * mult / 2), kernel_size=3, stride=2, padding=1, output_padding=1),
-                norm_layer(int(ngf * mult / 2)),
-                activation
-            ))
+            self.upsample_layers.append(
+                nn.Sequential(
+                    nn.ConvTranspose2d(
+                        ngf * mult,
+                        int(ngf * mult / 2),
+                        kernel_size=3,
+                        stride=2,
+                        padding=1,
+                        output_padding=1,
+                    ),
+                    norm_layer(int(ngf * mult / 2)),
+                    activation,
+                )
+            )
 
         self.final_layers = nn.Sequential(
             nn.ReflectionPad2d(3),
             nn.Conv2d(ngf, input_channels, kernel_size=7, padding=0),
-            nn.Tanh()
+            nn.Tanh(),
         )
 
     def forward(self, input):
         x = self.initial_layers(input)
-        
+
         # Downsample
         for layer in self.downsample_layers:
             x = layer(x)
-        
+
         # ResNet blocks
         for block in self.resnet_blocks:
             x = block(x)
-        
+
         # Upsample
         for layer in self.upsample_layers:
             x = layer(x)
-        
+
         return self.final_layers(x)
 
 
@@ -360,9 +387,7 @@ class SDTurboGenerator(pl.LightningModule):
             truncation=True,
             return_tensors="pt",
         ).input_ids[0]
-        self.bg2fence_emb = text_encoder(fence_prompt_tokens.unsqueeze(0))[
-            0
-        ].detach()
+        self.bg2fence_emb = text_encoder(fence_prompt_tokens.unsqueeze(0))[0].detach()
 
         bg_prompt_tokens = tokenizer(
             prompt_bg,
@@ -371,9 +396,7 @@ class SDTurboGenerator(pl.LightningModule):
             truncation=True,
             return_tensors="pt",
         ).input_ids[0]
-        self.fence2bg_emb = text_encoder(bg_prompt_tokens.unsqueeze(0))[
-            0
-        ].detach()
+        self.fence2bg_emb = text_encoder(bg_prompt_tokens.unsqueeze(0))[0].detach()
 
     # def get_traininable_params(self):
     #     # add all unet parameters

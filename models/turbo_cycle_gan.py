@@ -82,21 +82,21 @@ class TurboCycleGAN(pl.LightningModule):
         loss_l1_bg = self.criterion_cycle(rec_bgs, bg_imgs)
         loss_l1_fence = self.criterion_cycle(rec_fences, fence_imgs)
         loss_l1 = loss_l1_bg + loss_l1_fence
-        self.log("generator/loss_l1", loss_cycle, on_step=True, on_epoch=True)
+        self.log("generator/loss_l1", loss_cycle, on_epoch=True)
 
         loss_perceptual_fence = self.criterion_perceptual(
             fence_imgs, fake_fences
         ).mean()
         loss_perceptual_bg = self.criterion_perceptual(bg_imgs, fake_bgs).mean()
         loss_perceptual = loss_perceptual_bg + loss_perceptual_fence
-        self.log("generator/loss_cycle", loss_cycle, on_step=True, on_epoch=True)
+        self.log("generator/loss_cycle", loss_cycle, on_epoch=True)
 
         loss_cycle = (
             loss_l1 * self.hparams["lambda_identity"]
             + loss_perceptual * self.hparams["lambda_perceptual"]
         )
 
-        self.log("generator/loss_cycle", loss_cycle, on_step=True, on_epoch=True)
+        self.log("generator/loss_cycle", loss_cycle, on_epoch=True)
 
         # adversarial loss
         if self.hparams["d_type"] == "vagan":
@@ -110,7 +110,6 @@ class TurboCycleGAN(pl.LightningModule):
         self.log(
             "generator/loss_adv_Bg2Fence",
             loss_gan_Bg2Fence,
-            on_step=True,
             on_epoch=True,
         )
 
@@ -125,7 +124,6 @@ class TurboCycleGAN(pl.LightningModule):
         self.log(
             "generator/loss_adv_Fence2Bg",
             loss_gan_Fence2Bg,
-            on_step=True,
             on_epoch=True,
         )
 
@@ -134,7 +132,6 @@ class TurboCycleGAN(pl.LightningModule):
         self.log(
             "generator/loss_adv",
             loss_gan_Fence2Bg,
-            on_step=True,
             on_epoch=True,
         )
 
@@ -143,7 +140,7 @@ class TurboCycleGAN(pl.LightningModule):
             + self.hparams["lambda_cycle"] * loss_cycle
         )
 
-        self.log("generator/loss_G", loss_G, prog_bar=True, on_step=True, on_epoch=True)
+        self.log("generator/loss_G", loss_G, prog_bar=True, on_epoch=True)
 
         optimizer_G.zero_grad()
         self.manual_backward(loss_G)
@@ -168,7 +165,7 @@ class TurboCycleGAN(pl.LightningModule):
 
         loss_D_Bg = (loss_D_bg_imgs + loss_D_fake_bg) * self.hparams["lambda_gan"]
 
-        self.log("discriminator/loss_D_Bg", loss_D_Bg, on_step=True, on_epoch=True)
+        self.log("discriminator/loss_D_Bg", loss_D_Bg, on_epoch=True)
 
         if self.hparams["d_type"] == "vagan":
             pred_real = self.discriminator_Fence(fence_imgs, for_real=True)
@@ -189,15 +186,11 @@ class TurboCycleGAN(pl.LightningModule):
             "lambda_gan"
         ]
 
-        self.log(
-            "discriminator/loss_D_Fence", loss_D_Fence, on_step=True, on_epoch=True
-        )
+        self.log("discriminator/loss_D_Fence", loss_D_Fence, on_epoch=True)
 
         loss_D = loss_D_Bg + loss_D_Fence
 
-        self.log(
-            "discriminator/loss_D", loss_D, prog_bar=True, on_step=True, on_epoch=True
-        )
+        self.log("discriminator/loss_D", loss_D, prog_bar=True, on_epoch=True)
 
         optimizer_D.zero_grad()
         self.manual_backward(loss_D)

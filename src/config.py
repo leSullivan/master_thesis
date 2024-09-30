@@ -9,27 +9,27 @@ IMG_CH = 3
 
 G_TYPE = "resnet-6"
 NGF = 64
-N_DOWNSAMPLING_RES_NET = 2
+N_DOWNSAMPLING_RES_NET = 3
 N_DOWNSAMPLING_U_NET = 7
 
-D_TYPE = "patch"
+D_TYPE = "vagan"
 NDF = 64
 ND_LAYERS = 3
 D_USE_SIGMOID = False
 
-NUM_EPOCHS = 300
+NUM_EPOCHS = 400
 BATCH_SIZE = 5
 
-LR = 0.00001
+LR = 0.000005
 BETA1 = 0.9
 BETA2 = 0.999
 LAMBDA_GAN = 0.5
 LAMBDA_L1 = 1
 LAMBDA_PERCEPTUAL = 5
-LAMBDA_CYCLE = 0
+LAMBDA_CYCLE = 10
 
-PROMPT_BG = "Please provide the path to the background image"
-PROMPT_FENCE = "Please provide the path to the fence image"
+PROMPT_BG = "A gras landcape"
+PROMPT_FENCE = "A gras landscape with a security mesh fence in the foreground"
 
 NORM_TYPE = "instance"
 

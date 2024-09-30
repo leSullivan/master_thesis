@@ -6,7 +6,7 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision.utils import make_grid
 
 from models import Generator, Discriminator  # Bgssuming you have defined these already
-from .utils import preprocess_for_fid, init_gan_loss, DinoStructureLoss
+from .utils import preprocess_for_fid, init_gan_loss, init_weights, DinoStructureLoss
 
 
 class CycleGAN(pl.LightningModule):
@@ -55,6 +55,11 @@ class CycleGAN(pl.LightningModule):
             d_use_sigmoid=d_use_sigmoid,
         )
 
+        init_weights(self.generator_Bg2Fence)
+        init_weights(self.generator_Fence2Bg)
+        init_weights(self.discriminator_Bg)
+        init_weights(self.discriminator_Fence)
+
         self.criterion_gan = init_gan_loss(d_type=d_type)
         self.criterion_cycle = nn.L1Loss()
         self.criterion_identity = nn.L1Loss()
@@ -85,6 +90,7 @@ class CycleGAN(pl.LightningModule):
         # cycle loss
         loss_cycle_bg = self.criterion_cycle(rec_bgs, bg_imgs)
         loss_cycle_fence = self.criterion_cycle(rec_fences, fence_imgs)
+
         loss_cycle = loss_cycle_bg + loss_cycle_fence
 
         self.log("generator/loss_cycle", loss_cycle, on_epoch=True)

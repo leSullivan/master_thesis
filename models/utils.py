@@ -2,7 +2,9 @@ import torch
 import functools
 from torch import nn
 import torchvision
-import torch.nn.functional as F, init
+import torch.nn.functional as F
+import torch.nn.init as init
+
 
 
 # needed as device isnt available in module.init()

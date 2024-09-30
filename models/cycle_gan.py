@@ -55,10 +55,10 @@ class CycleGAN(pl.LightningModule):
             d_use_sigmoid=d_use_sigmoid,
         )
 
-        init_weights(self.generator_Bg2Fence)
-        init_weights(self.generator_Fence2Bg)
-        init_weights(self.discriminator_Bg)
-        init_weights(self.discriminator_Fence)
+        init_weights(self.generator_Bg2Fence, g_type)
+        init_weights(self.generator_Fence2Bg, g_type)
+        init_weights(self.discriminator_Bg, d_type)
+        init_weights(self.discriminator_Fence, d_type)
 
         self.criterion_gan = init_gan_loss(d_type=d_type)
         self.criterion_cycle = nn.L1Loss()

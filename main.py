@@ -70,7 +70,7 @@ def main(args):
 
     logger = TensorBoardLogger(
         CHECKPOINT_PATH,
-        name=f"percep_{args.model_name}_{args.g_type}_{args.d_type}",
+        name=f"{args.model_name}_{args.g_type}_{args.d_type}",
     )
 
     logger.log_hyperparams(args)

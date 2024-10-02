@@ -28,7 +28,7 @@ LAMBDA_L1 = 1
 LAMBDA_PERCEPTUAL = 5
 LAMBDA_CYCLE = 10
 
-PROMPT_BG = "A gras landcape"
+PROMPT_BG = "A gras landscape"
 PROMPT_FENCE = "A gras landscape with a security mesh fence in the foreground"
 
 NORM_TYPE = "instance"

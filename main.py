@@ -4,7 +4,7 @@ import argparse
 import pytorch_lightning as pl
 
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
 from src.create_training_dataset import sample_images
 from src.data_pipeline import UnpairedImageDataModule
@@ -73,6 +73,8 @@ def main(args):
         name=f"{args.model_name}_{args.g_type}_{args.d_type}",
     )
 
+    lr_monitor = LearningRateMonitor(logging_interval="epoch")
+
     logger.log_hyperparams(args)
 
     checkpoint_callback = ModelCheckpoint(
@@ -88,7 +90,7 @@ def main(args):
         log_every_n_steps=1,
         logger=logger,
         accelerator="gpu" if torch.cuda.is_available() else "mps",
-        callbacks=[checkpoint_callback],
+        callbacks=[checkpoint_callback, lr_monitor],
     )
 
     trainer.fit(model, data_module)

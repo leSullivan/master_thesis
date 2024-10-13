@@ -235,6 +235,12 @@ class CycleGAN(pl.LightningModule):
         self.log("DINO", structure_loss, on_epoch=True)
         self.structure_loss.reset()
 
+    def on_epoch_end(self):
+        current_lr_G = self.optimizers()[0].param_groups[0]["lr"]
+        current_lr_D = self.optimizers()[1].param_groups[0]["lr"]
+        self.log("learning_rate_G", current_lr_G, prog_bar=True)
+        self.log("learning_rate_D", current_lr_D, prog_bar=True)
+
     def configure_optimizers(self):
         optimizer_G = torch.optim.AdamW(
             list(self.generator_Bg2Fence.parameters())
@@ -248,4 +254,25 @@ class CycleGAN(pl.LightningModule):
             lr=self.hparams.lr,
             betas=(self.hparams.beta1, self.hparams.beta2),
         )
-        return [optimizer_G, optimizer_D], []
+
+        scheduler_G = torch.optim.lr_scheduler.StepLR(
+            optimizer_G, step_size=80, gamma=0.5
+        )
+        scheduler_D = torch.optim.lr_scheduler.StepLR(
+            optimizer_D, step_size=80, gamma=0.5
+        )
+
+        return [optimizer_G, optimizer_D], [
+            {
+                "scheduler": scheduler_G,
+                "interval": "epoch",
+                "frequency": 1,
+                "name": "lr_G",
+            },
+            {
+                "scheduler": scheduler_D,
+                "interval": "epoch",
+                "frequency": 1,
+                "name": "lr_D",
+            },
+        ]

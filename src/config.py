@@ -7,9 +7,9 @@ IMG_W = 768
 IMG_H = 512
 IMG_CH = 3
 
-G_TYPE = "resnet-6"
+G_TYPE = "stan_unet"
 NGF = 64
-N_DOWNSAMPLING_RES_NET = 3
+N_DOWNSAMPLING_RES_NET = 4
 N_DOWNSAMPLING_U_NET = 7
 
 D_TYPE = "vagan"
@@ -20,7 +20,7 @@ D_USE_SIGMOID = False
 NUM_EPOCHS = 400
 BATCH_SIZE = 3
 
-LR = 0.000001
+LR = 0.000005  # 5 auf 01 für lower LR
 BETA1 = 0.9
 BETA2 = 0.999
 LAMBDA_GAN = 0.5

@@ -87,6 +87,8 @@ class Generator(pl.LightningModule):
                 norm_layer,
                 use_dropout=True,
             )
+        elif g_type == "stan_unet":
+            self.model = StanUNet()
         else:
             raise ValueError(f"Generator type '{g_type}' is not recognized.")
 
@@ -363,17 +365,18 @@ class SDTurboGenerator(pl.LightningModule):
         self,
         prompt_bg,
         prompt_fence,
+        model="sd-turbo",
     ):
         super(SDTurboGenerator, self).__init__()
         device = get_device()
 
-        self.unet = initialize_unet()
+        self.unet = initialize_unet(model=model)
         # unet.enable_xformers_memory_efficient_attention()
         # unet.enable_gradient_checkpointing()
-        vae = initialize_vae()
+        vae = initialize_vae(model=model)
         self.vae = vae
 
-        self.scheduler = get_1step_sched(device)
+        self.scheduler = get_1step_sched(device, model=model)
 
         self.encoder = VAE_encode(vae, copy.deepcopy(vae))
         self.decoder = VAE_decode(vae, copy.deepcopy(vae))
@@ -381,13 +384,13 @@ class SDTurboGenerator(pl.LightningModule):
         self.timesteps = torch.tensor([999], device=device).long()
 
         tokenizer = AutoTokenizer.from_pretrained(
-            "stabilityai/sd-turbo",
+            f"stabilityai/{model}",
             subfolder="tokenizer",
             use_fast=False,
         )
 
         text_encoder = CLIPTextModel.from_pretrained(
-            "stabilityai/sd-turbo", subfolder="text_encoder"
+            f"stabilityai/{model}", subfolder="text_encoder"
         )
 
         fence_prompt_tokens = tokenizer(
@@ -407,37 +410,6 @@ class SDTurboGenerator(pl.LightningModule):
             return_tensors="pt",
         ).input_ids[0]
         self.fence2bg_emb = text_encoder(bg_prompt_tokens.unsqueeze(0))[0].detach()
-
-    # def get_traininable_params(self):
-    #     # add all unet parameters
-    #     params_gen = list(self.unet.conv_in.parameters())
-    #     self.unet.conv_in.requires_grad_(True)
-    #     self.unet.set_adapters(["default_encoder", "default_decoder", "default_others"])
-    #     for n, p in self.unet.named_parameters():
-    #         if "lora" in n and "default" in n:
-    #             assert p.requires_grad
-    #             params_gen.append(p)
-
-    #     # add all vae_a2b parameters
-    #     for n, p in self.vae.named_parameters():
-    #         if "lora" in n and "vae_skip" in n:
-    #             assert p.requires_grad
-    #             params_gen.append(p)
-    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_1.parameters())
-    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_2.parameters())
-    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_3.parameters())
-    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_4.parameters())
-
-    #     # add all vae_b2a parameters
-    #     for n, p in self.vae.named_parameters():
-    #         if "lora" in n and "vae_skip" in n:
-    #             assert p.requires_grad
-    #             params_gen.append(p)
-    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_1.parameters())
-    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_2.parameters())
-    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_3.parameters())
-    #     params_gen = params_gen + list(self.vae.decoder.skip_conv_4.parameters())
-    #     return params_gen
 
     def forward(self, x, direction):
         batch_size = x.shape[0]
@@ -502,10 +474,10 @@ class VAE_decode(pl.LightningModule):
         return x_decoded
 
 
-def initialize_unet(rank=8, return_lora_module_names=False):
+def initialize_unet(rank=8, return_lora_module_names=False, model="sd-turbo"):
     # load unet
     unet = UNet2DConditionModel.from_pretrained(
-        "stabilityai/sd-turbo", subfolder="unet"
+        f"stabilityai/{model}", subfolder="unet"
     )
     # frezze model params
     unet.requires_grad_(False)
@@ -578,8 +550,8 @@ def initialize_unet(rank=8, return_lora_module_names=False):
         return unet
 
 
-def initialize_vae(rank=4, return_lora_module_names=False):
-    vae = AutoencoderKL.from_pretrained("stabilityai/sd-turbo", subfolder="vae")
+def initialize_vae(rank=4, return_lora_module_names=False, model="sd-turbo"):
+    vae = AutoencoderKL.from_pretrained(f"stabilityai/{model}", subfolder="vae")
     vae.requires_grad_(False)
     vae.encoder.forward = my_vae_encoder_fwd.__get__(vae.encoder, vae.encoder.__class__)
     vae.decoder.forward = my_vae_decoder_fwd.__get__(vae.decoder, vae.decoder.__class__)
@@ -630,10 +602,10 @@ def initialize_vae(rank=4, return_lora_module_names=False):
         return vae
 
 
-def get_1step_sched(device):
+def get_1step_sched(device, model="sd-turbo"):
 
     noise_scheduler_1step = DDPMScheduler.from_pretrained(
-        "stabilityai/sd-turbo", subfolder="scheduler"
+        f"stabilityai/{model}", subfolder="scheduler"
     )
     noise_scheduler_1step.set_timesteps(1, device=device)
     return noise_scheduler_1step
@@ -685,3 +657,347 @@ def my_vae_decoder_fwd(self, sample, latent_embeds=None):
     sample = self.conv_act(sample)
     sample = self.conv_out(sample)
     return sample
+
+
+# UNET Stan
+from typing import Any, Iterable
+
+import torch
+import abc
+import torch.nn.functional as F
+from torch import Tensor, nn
+
+
+CHANNELS_KERNEL = tuple[int, int]
+LAYERS_ARGS = tuple[CHANNELS_KERNEL, ...]
+BLOCK_ARGS = tuple[LAYERS_ARGS, ...]
+UNSTRUCTURED_BLOCK_ARGS = list[int | list[int | tuple[int, int]]]
+
+
+class BaseModel(nn.Module):
+    @abc.abstractmethod
+    def forward(self, *args: Any, **kwargs: Any) -> Any:
+        pass
+
+    @abc.abstractmethod
+    def get_hyperparameters(self) -> dict[str, Any]:
+        pass
+
+
+class ConvBlock(nn.Module):
+    def __init__(self, in_ch: int, layers_args: LAYERS_ARGS) -> None:
+        super().__init__()
+
+        def get_conv_block(in_: int, out: int, kernel_size: int = 3) -> nn.Module:
+            padding = kernel_size // 2
+            return nn.Sequential(
+                nn.Conv2d(
+                    in_,
+                    out,
+                    kernel_size=kernel_size,
+                    padding=padding,
+                    bias=False,
+                ),
+                nn.BatchNorm2d(out),
+                nn.ReLU(inplace=True),
+            )
+
+        prev_ch = in_ch
+        convs = []
+        for out_channels, kernel_size in layers_args:
+            convs += [get_conv_block(prev_ch, out_channels, kernel_size=kernel_size)]
+            prev_ch = out_channels
+        self.convs = nn.ModuleList(convs)
+
+    def forward(self, x: Tensor, **kwargs: dict[Any, Any]) -> Tensor:
+        for layer in self.convs:
+            x = layer(x)
+        return x
+
+
+class Down(nn.Module):
+    def __init__(self, in_ch: int, layers_args: LAYERS_ARGS) -> None:
+        super().__init__()
+        self.maxpool_conv = nn.Sequential(
+            nn.MaxPool2d(2),
+            ConvBlock(in_ch=in_ch, layers_args=layers_args),
+        )
+
+    def forward(self, x: Tensor, **kwargs: dict[Any, Any]) -> Tensor:
+        return self.maxpool_conv(x)  # type: ignore[no-any-return]
+
+
+class Up(nn.Module):
+    def __init__(
+        self,
+        in_ch: int,
+        layers_args: LAYERS_ARGS,
+        encoder_lvl_ch: int,
+        bilinear: bool = False,
+    ) -> None:
+        super().__init__()
+        self.bilinear = bilinear
+
+        self.up: nn.Module
+        if bilinear:
+            self.up = nn.Sequential(
+                nn.Conv2d(in_ch, encoder_lvl_ch, kernel_size=1, stride=1),
+                nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
+            )
+        else:
+            self.up = nn.ConvTranspose2d(in_ch, encoder_lvl_ch, kernel_size=2, stride=2)
+        self.duble_conv_block = ConvBlock(
+            in_ch=encoder_lvl_ch * 2, layers_args=layers_args
+        )
+
+    def forward(
+        self,
+        x: Tensor,
+        skip_connection: Tensor,
+        autoencoder_mode: bool = False,
+        **kwargs: dict[Any, Any],
+    ) -> Tensor:
+        x = self.up(x)
+        # input is CHW
+        diffY = skip_connection.size()[2] - x.size()[2]
+        diffX = skip_connection.size()[3] - x.size()[3]
+
+        x = F.pad(x, [diffX // 2, diffX - diffX // 2, diffY // 2, diffY - diffY // 2])
+        # if you have padding issues, see
+        # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy
+        # /commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
+        # https://github.com/xiaopeng-liao/Pytorch-UNet
+        # /commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
+        if autoencoder_mode:
+            x = torch.cat([x, x], dim=1)
+        else:
+            x = torch.cat([skip_connection, x], dim=1)
+        return self.duble_conv_block(x)  # type: ignore[no-any-return]
+
+
+def get_output_channels(layers_args: LAYERS_ARGS) -> int:
+    """Returns number of output channels from layer arguments."""
+    return layers_args[-1][0]
+
+
+def get_n_output_channels(block_args: BLOCK_ARGS, n_last: int) -> list[int]:
+    """Returns number of output channels from n last blocks."""
+    nl = len(block_args)
+    return [
+        get_output_channels(layers_args) for layers_args in block_args[nl - n_last :]
+    ]
+
+
+class UnetEncoder(BaseModel):
+    def __init__(
+        self,
+        n_channels: int,
+        blocks_args: BLOCK_ARGS,
+        *args: tuple[Any, ...],
+        **kwargs: dict[Any, Any],
+    ) -> None:
+        super().__init__()
+        self.n_channels = n_channels
+        self.blocks_args = blocks_args
+
+        conv_blocks: list[nn.Module] = [
+            ConvBlock(in_ch=n_channels, layers_args=blocks_args[0])
+        ]
+        prev_ch = get_output_channels(blocks_args[0])
+        for layers_args in blocks_args[1:]:
+            conv_blocks += [Down(in_ch=prev_ch, layers_args=layers_args)]
+            prev_ch = get_output_channels(layers_args)
+
+        self.conv_blocks = nn.ModuleList(conv_blocks)
+
+    def forward(
+        self, x: Tensor, *args: Any, **kwargs: Any
+    ) -> dict[str, Tensor | list[Tensor]]:
+        activations = []
+        for block in self.conv_blocks:
+            x = block(x)
+            activations.append(x)
+        emb = activations[-1]
+        return {"emb": emb, "activations": activations}
+
+    def deepen_model(self, new_blocks_args: BLOCK_ARGS) -> None:
+        conv_blocks = []
+        prev_ch = get_output_channels(self.blocks_args[0])
+        for layers_args in new_blocks_args:
+            conv_blocks += [Down(in_ch=prev_ch, layers_args=layers_args)]
+            prev_ch = get_output_channels(layers_args)
+        self.conv_blocks.extend(conv_blocks)
+        self.blocks_args += new_blocks_args
+
+    def get_hyperparameters(self) -> dict[str, Any]:
+        return dict(
+            n_channels=self.n_channels,
+            blocks_args=self.blocks_args,
+        )
+
+
+class UnetDecoder(BaseModel):
+    def __init__(
+        self,
+        n_channels: int,
+        blocks_args: BLOCK_ARGS,
+        encoder_output_channels: tuple[int, ...],
+        autoencoder_mode: bool = False,
+        bilinear: bool = False,
+    ) -> None:
+        super().__init__()
+        self.n_channels = n_channels
+        self.blocks_args = blocks_args
+        self.encoder_output_channels = encoder_output_channels
+        self.autoencoder_mode = autoencoder_mode
+        self.bilinear = bilinear
+        assert len(blocks_args) == len(encoder_output_channels) - 1
+
+        conv_blocks: list[Up] = []
+        prev_ch = encoder_output_channels[-1]
+        for i, layers_args in enumerate(blocks_args):
+            conv_blocks += [
+                Up(
+                    in_ch=prev_ch,
+                    layers_args=layers_args,
+                    encoder_lvl_ch=encoder_output_channels[-(i + 2)],
+                    bilinear=bilinear,
+                )
+            ]
+            prev_ch = get_output_channels(layers_args)
+        self.conv_blocks = nn.ModuleList(conv_blocks)
+
+        self.output_layer = nn.Conv2d(prev_ch, n_channels, kernel_size=1)
+
+    def forward(self, activations: list[Tensor], **kwargs: dict[Any, Any]) -> Tensor:
+        x = activations.pop()
+        for block in self.conv_blocks:
+            skip = activations.pop()
+            x = block(x, skip, autoencoder_mode=self.autoencoder_mode)
+        return self.output_layer(x)
+
+    def set_autoencoder_mode(self, enable: bool) -> None:
+        self.autoencoder_mode = enable
+
+    def get_hyperparameters(self) -> dict[str, Any]:
+        return dict(
+            n_classes=self.n_classes,
+            blocks_args=self.blocks_args,
+            encoder_output_channels=self.encoder_output_channels,
+            autoencoder_mode=self.autoencoder_mode,
+            bilinear=self.bilinear,
+        )
+
+    def deepen_model(
+        self,
+        new_blocks_args: BLOCK_ARGS,
+        new_encoder_output_channels: list[int] | tuple[int, ...],
+    ) -> None:
+        assert len(new_blocks_args) == len(new_encoder_output_channels)
+        self.blocks_args = (*new_blocks_args, *self.blocks_args)
+        self.encoder_output_channels = (
+            *self.encoder_output_channels,
+            *new_encoder_output_channels,
+        )
+
+        conv_blocks = []
+        prev_ch = new_encoder_output_channels[-1]
+        max_idx = len(self.blocks_args) - 1
+        for i, layers_args in enumerate(new_blocks_args):
+            conv_blocks += [
+                Up(
+                    in_ch=prev_ch,
+                    layers_args=layers_args,
+                    encoder_lvl_ch=self.encoder_output_channels[max_idx - i],
+                )
+            ]
+            prev_ch = get_output_channels(layers_args)
+        self.conv_blocks = nn.ModuleList([*conv_blocks, *self.conv_blocks])
+
+    def change_output_channels(self, n_channels: int) -> None:
+        prev_ch = get_output_channels(self.blocks_args[-1])
+        self.output_layer = nn.Conv2d(prev_ch, n_channels, kernel_size=1)
+        self.n_classes = n_channels
+
+
+def standarize_blocks_args(
+    block_args: UNSTRUCTURED_BLOCK_ARGS,
+    default_kernel_size: int = 3,
+) -> BLOCK_ARGS:
+    def decode_layer_args(layer_args: int | tuple[int, int]) -> CHANNELS_KERNEL:
+        if isinstance(layer_args, int):
+            return (layer_args, default_kernel_size)
+        else:
+            return layer_args
+
+    def decode_multi_layer_args(
+        multi_layer_args: int | Iterable[int | tuple[int, int]]
+    ) -> LAYERS_ARGS:
+        if isinstance(multi_layer_args, int):
+            return ((multi_layer_args, default_kernel_size),)
+        elif isinstance(multi_layer_args, Iterable):
+            return tuple(
+                decode_layer_args(layer_args) for layer_args in multi_layer_args
+            )
+        else:
+            raise ValueError(f"Expected int or Iterable but got {multi_layer_args}.")
+
+    final_blocks = tuple(
+        decode_multi_layer_args(multi_layer_args) for multi_layer_args in block_args
+    )
+    return final_blocks
+
+
+def get_encoder_output_channels(
+    encoder_blocks_args: BLOCK_ARGS,
+) -> tuple[int, ...]:
+    return tuple(layers_args[-1][0] for layers_args in encoder_blocks_args)
+
+
+class StanUNet(BaseModel):
+    def __init__(
+        self,
+        n_channels: int = 3,
+        blocks: UNSTRUCTURED_BLOCK_ARGS = [64, 128, 256, 512, 1024, 2048],
+        autoencoder_mode: bool = False,
+        bilinear: bool = False,
+    ) -> None:
+        super().__init__()
+        blocks_args = standarize_blocks_args(blocks)
+
+        self.encoder = UnetEncoder(
+            n_channels=n_channels,
+            blocks_args=blocks_args,
+        )
+
+        # Create symmetrical decoder blocks
+        decoder_blocks_args = blocks_args[::-1][
+            1:
+        ]  # Reverse and remove the last (deepest) block
+
+        self.decoder = UnetDecoder(
+            n_channels=n_channels,
+            autoencoder_mode=autoencoder_mode,
+            blocks_args=decoder_blocks_args,
+            encoder_output_channels=get_encoder_output_channels(blocks_args),
+            bilinear=bilinear,
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        encoder_kwargs = self.encoder(x)
+        result = self.decoder(**encoder_kwargs)
+        return result
+
+    def set_autoencoder_mode(self, enable: bool) -> None:
+        self.decoder.set_autoencoder_mode(enable)
+
+    def change_output_channels(self, n_channels: int) -> None:
+        self.decoder.change_output_channels(n_channels)
+
+    def get_hyperparameters(self) -> dict[str, Any]:
+        return dict(
+            n_channels=self.encoder.n_channels,
+            blocks=self.encoder.blocks_args,
+            autoencoder_mode=self.decoder.autoencoder_mode,
+            bilinear=self.decoder.bilinear,
+        )

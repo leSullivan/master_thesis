@@ -236,8 +236,7 @@ class TurboCycleGAN(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer_G = torch.optim.AdamW(
-            list(self.generator_Bg2Fence.parameters())
-            + list(self.generator_Fence2Bg.parameters()),
+            list(self.generator.parameters()),
             lr=self.hparams.lr,
             betas=(self.hparams.beta1, self.hparams.beta2),
         )

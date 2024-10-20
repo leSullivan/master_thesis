@@ -418,19 +418,19 @@ class SDTurboGenerator(pl.LightningModule):
             self.bg2fence_emb if direction == "Bg2Fence" else self.fence2bg_emb
         )
         # check dtype ! (to  tochfloat 32)
-        caption_emb = caption_emb_base.repeat(batch_size, 1, 1)
-        print(caption_emb.device)
+        caption_emb = caption_emb_base.repeat(batch_size, 1, 1).to(self.device)
+        print("TEST", caption_emb.device)
 
         # encode to latent space
         x_enc = self.encoder(x, direction=direction).to(x.dtype)
-        print(x_enc.device)
+        print("gu", x_enc.device)
         # duffision steps
         model_pred = self.unet(
             x_enc,
             self.timesteps,
             encoder_hidden_states=caption_emb,
         ).sample
-        print(model_pred.device)
+        print("huhu", model_pred.device)
 
         x_out = torch.stack(
             [

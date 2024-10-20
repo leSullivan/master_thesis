@@ -1,8 +1,8 @@
 #!/bin/bash
 model_name="turbo_cyclegan"
 lambda_cycle="0"
-# g_type="resnet-6"
-# d_type="patch"
+g_type="resnet-6"
+d_type="vagan"
 lambda_perceptual="5"
 lambda_gan="0.5"
 lambda_cycle="10"

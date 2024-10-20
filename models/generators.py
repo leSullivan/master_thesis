@@ -453,10 +453,12 @@ class VAE_encode(pl.LightningModule):
 
     def forward(self, x, direction):
         assert direction in ["Bg2Fence", "Fence2Bg"]
+        print("encoder", direction)
         if direction == "Bg2Fence":
             _vae = self.vae_BgToFence
         else:
             _vae = self.vae_Fence2Bg
+        print(_vae)
         return _vae.encode(x).latent_dist.sample() * _vae.config.scaling_factor
 
 
@@ -467,19 +469,20 @@ class VAE_decode(pl.LightningModule):
         self.vae_Fence2Bg = vae_Fence2Bg
 
     def forward(self, x, direction):
+        print("decoder", direction)
         assert direction in ["Bg2Fence", "Fence2Bg"]
         if direction == "Bg2Fence":
             _vae = self.vae_BgToFence
         else:
             _vae = self.vae_Fence2Bg
 
+        print(_vae)
+
         if not hasattr(_vae.encoder, "current_down_blocks"):
             raise RuntimeError(
                 "The encoder has not been run yet or current_down_blocks is not set."
             )
 
-        print("current_down_blocks HERE")
-        print(_vae.encoder.current_down_blocks)
         _vae.decoder.incoming_skip_acts = _vae.encoder.current_down_blocks
         x_decoded = (_vae.decode(x / _vae.config.scaling_factor).sample).clamp(-1, 1)
         return x_decoded

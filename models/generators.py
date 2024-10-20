@@ -458,7 +458,7 @@ class VAE_encode(pl.LightningModule):
             _vae = self.vae_BgToFence
         else:
             _vae = self.vae_Fence2Bg
-        print(_vae)
+
         return _vae.encode(x).latent_dist.sample() * _vae.config.scaling_factor
 
 
@@ -475,13 +475,6 @@ class VAE_decode(pl.LightningModule):
             _vae = self.vae_BgToFence
         else:
             _vae = self.vae_Fence2Bg
-
-        print(_vae)
-
-        if not hasattr(_vae.encoder, "current_down_blocks"):
-            raise RuntimeError(
-                "The encoder has not been run yet or current_down_blocks is not set."
-            )
 
         _vae.decoder.incoming_skip_acts = _vae.encoder.current_down_blocks
         x_decoded = (_vae.decode(x / _vae.config.scaling_factor).sample).clamp(-1, 1)

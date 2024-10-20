@@ -472,7 +472,12 @@ class VAE_decode(pl.LightningModule):
             _vae = self.vae_BgToFence
         else:
             _vae = self.vae_Fence2Bg
-        assert _vae.encoder.current_down_blocks is not None
+
+        if not hasattr(_vae.encoder, "current_down_blocks"):
+            raise RuntimeError(
+                "The encoder has not been run yet or current_down_blocks is not set."
+            )
+
         print("current_down_blocks HERE")
         print(_vae.encoder.current_down_blocks)
         _vae.decoder.incoming_skip_acts = _vae.encoder.current_down_blocks

@@ -473,6 +473,8 @@ class VAE_decode(pl.LightningModule):
         else:
             _vae = self.vae_Fence2Bg
         assert _vae.encoder.current_down_blocks is not None
+        print("current_down_blocks HERE")
+        print(_vae.encoder.current_down_blocks)
         _vae.decoder.incoming_skip_acts = _vae.encoder.current_down_blocks
         x_decoded = (_vae.decode(x / _vae.config.scaling_factor).sample).clamp(-1, 1)
         return x_decoded
@@ -619,8 +621,6 @@ def my_vae_encoder_fwd(self, sample):
     sample = self.conv_in(sample)
     l_blocks = []
     # down
-    print("down")
-    print(self.down_blocks)
     for down_block in self.down_blocks:
         l_blocks.append(sample)
         sample = down_block(sample)
@@ -630,6 +630,8 @@ def my_vae_encoder_fwd(self, sample):
     sample = self.conv_act(sample)
     sample = self.conv_out(sample)
     self.current_down_blocks = l_blocks
+    print("current_down_blocks")
+    print(self.current_down_blocks)
     return sample
 
 

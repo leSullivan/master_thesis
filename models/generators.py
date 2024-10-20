@@ -381,8 +381,6 @@ class SDTurboGenerator(pl.LightningModule):
         self.encoder = VAE_encode(vae, copy.deepcopy(vae))
         self.decoder = VAE_decode(vae, copy.deepcopy(vae))
 
-        self.timesteps = torch.tensor([999], device=device).long()
-
         tokenizer = AutoTokenizer.from_pretrained(
             f"stabilityai/{model}",
             subfolder="tokenizer",
@@ -413,6 +411,10 @@ class SDTurboGenerator(pl.LightningModule):
 
     def forward(self, x, direction):
         batch_size = x.shape[0]
+        timesteps = torch.tensor(
+            [self.scheduler.config.num_train_timesteps - 1] * batch_size,
+            device=self.device,
+        ).long()
 
         caption_emb_base = (
             self.bg2fence_emb if direction == "Bg2Fence" else self.fence2bg_emb
@@ -427,21 +429,21 @@ class SDTurboGenerator(pl.LightningModule):
         # duffision steps
         model_pred = self.unet(
             x_enc,
-            self.timesteps,
+            timesteps,
             encoder_hidden_states=caption_emb,
         ).sample
         print("huhu", model_pred.device)
 
         print("schel")
         print(model_pred.shape)
-        print(self.timesteps.shape)
+        print(timesteps.shape)
         print(x_enc.shape)
         print(batch_size)
 
         x_out = torch.stack(
             [
                 self.scheduler.step(
-                    model_pred[i], self.timesteps[i], x_enc[i], return_dict=True
+                    model_pred[i], timesteps[i], x_enc[i], return_dict=True
                 ).prev_sample
                 for i in range(batch_size)
             ]

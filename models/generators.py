@@ -630,9 +630,8 @@ def my_vae_encoder_fwd(self, sample):
     sample = self.conv_norm_out(sample)
     sample = self.conv_act(sample)
     sample = self.conv_out(sample)
+    print("assign l_blocks")
     self.current_down_blocks = l_blocks
-    print("current_down_blocks")
-    print(self.current_down_blocks)
     return sample
 
 

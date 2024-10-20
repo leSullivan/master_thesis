@@ -419,15 +419,19 @@ class SDTurboGenerator(pl.LightningModule):
         )
         # check dtype ! (to  tochfloat 32)
         caption_emb = caption_emb_base.repeat(batch_size, 1, 1)
+        print(caption_emb.device)
 
         # encode to latent space
         x_enc = self.encoder(x, direction=direction).to(x.dtype)
+        print(x_enc.device)
         # duffision steps
         model_pred = self.unet(
             x_enc,
             self.timesteps,
             encoder_hidden_states=caption_emb,
         ).sample
+        print(model_pred.device)
+
         x_out = torch.stack(
             [
                 self.scheduler.step(
@@ -436,8 +440,11 @@ class SDTurboGenerator(pl.LightningModule):
                 for i in range(batch_size)
             ]
         )
+        print(x_out.device)
+
         # decode to image space
         x_out_decoded = self.decoder(x_out, direction=direction)
+        print(x_out_decoded.device)
         return x_out_decoded
 
 

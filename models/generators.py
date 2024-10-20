@@ -423,7 +423,7 @@ class SDTurboGenerator(pl.LightningModule):
         caption_emb = caption_emb_base.repeat(batch_size, 1, 1).to(self.device)
 
         # encode to latent space
-        x_enc = self.encoder(x, direction=direction).to(x.dtype)
+        x_enc, current_down_blocks = self.encoder(x, direction=direction)
         # duffision steps
         model_pred = self.unet(
             x_enc,
@@ -441,7 +441,9 @@ class SDTurboGenerator(pl.LightningModule):
         )
 
         # decode to image space
-        x_out_decoded = self.decoder(x_out, direction=direction)
+        x_out_decoded = self.decoder(
+            x_out, direction=direction, current_down_blocks=current_down_blocks
+        )
         return x_out_decoded
 
 
@@ -454,12 +456,12 @@ class VAE_encode(pl.LightningModule):
     def forward(self, x, direction):
         assert direction in ["Bg2Fence", "Fence2Bg"]
         print("encoder", direction)
-        if direction == "Bg2Fence":
-            _vae = self.vae_BgToFence
-        else:
-            _vae = self.vae_Fence2Bg
 
-        return _vae.encode(x).latent_dist.sample() * _vae.config.scaling_factor
+        _vae = self.vae_BgToFence if direction == "Bg2Fence" else self.vae_Fence2Bg
+
+        latent = _vae.encode(x).latent_dist.sample() * _vae.config.scaling_factor
+
+        return latent, _vae.encoder.current_down_blocks
 
 
 class VAE_decode(pl.LightningModule):
@@ -468,15 +470,16 @@ class VAE_decode(pl.LightningModule):
         self.vae_BgToFence = vae_BgToFence
         self.vae_Fence2Bg = vae_Fence2Bg
 
-    def forward(self, x, direction):
+    def forward(self, x, direction, current_down_blocks):
         print("decoder", direction)
         assert direction in ["Bg2Fence", "Fence2Bg"]
-        if direction == "Bg2Fence":
-            _vae = self.vae_BgToFence
-        else:
-            _vae = self.vae_Fence2Bg
+        _vae = self.vae_BgToFence if direction == "Bg2Fence" else self.vae_Fence2Bg
 
-        _vae.decoder.incoming_skip_acts = _vae.encoder.current_down_blocks
+        if current_down_blocks is not None:
+            _vae.decoder.incoming_skip_acts = current_down_blocks
+        else:
+            print("Warning: current_down_blocks is None")
+
         x_decoded = (_vae.decode(x / _vae.config.scaling_factor).sample).clamp(-1, 1)
         return x_decoded
 

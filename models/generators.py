@@ -432,6 +432,12 @@ class SDTurboGenerator(pl.LightningModule):
         ).sample
         print("huhu", model_pred.device)
 
+        print("schel")
+        print(model_pred.shape)
+        print(self.timesteps.shape)
+        print(x_enc.shape)
+        print(batch_size)
+
         x_out = torch.stack(
             [
                 self.scheduler.step(

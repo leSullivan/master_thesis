@@ -421,24 +421,15 @@ class SDTurboGenerator(pl.LightningModule):
         )
         # check dtype ! (to  tochfloat 32)
         caption_emb = caption_emb_base.repeat(batch_size, 1, 1).to(self.device)
-        print("TEST", caption_emb.device)
 
         # encode to latent space
         x_enc = self.encoder(x, direction=direction).to(x.dtype)
-        print("gu", x_enc.device)
         # duffision steps
         model_pred = self.unet(
             x_enc,
             timesteps,
             encoder_hidden_states=caption_emb,
         ).sample
-        print("huhu", model_pred.device)
-
-        print("schel")
-        print(model_pred.shape)
-        print(timesteps.shape)
-        print(x_enc.shape)
-        print(batch_size)
 
         x_out = torch.stack(
             [
@@ -448,11 +439,9 @@ class SDTurboGenerator(pl.LightningModule):
                 for i in range(batch_size)
             ]
         )
-        print(x_out.device)
 
         # decode to image space
         x_out_decoded = self.decoder(x_out, direction=direction)
-        print(x_out_decoded.device)
         return x_out_decoded
 
 
@@ -630,6 +619,8 @@ def my_vae_encoder_fwd(self, sample):
     sample = self.conv_in(sample)
     l_blocks = []
     # down
+    print("down")
+    print(self.down_blocks)
     for down_block in self.down_blocks:
         l_blocks.append(sample)
         sample = down_block(sample)

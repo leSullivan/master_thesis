@@ -1,5 +1,5 @@
 #!/bin/bash
-model_name="turbo_cylcegan"
+model_name="turbo_cyclegan"
 lambda_cycle="0"
 # g_type="resnet-6"
 # d_type="patch"

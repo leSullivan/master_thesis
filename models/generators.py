@@ -87,7 +87,7 @@ class Generator(pl.LightningModule):
                 norm_layer,
                 use_dropout=True,
             )
-        elif g_type == "stan_unet_5_layer":
+        elif g_type == "stan_unet_6_layer":
             self.model = StanUNet()
         else:
             raise ValueError(f"Generator type '{g_type}' is not recognized.")
@@ -969,7 +969,7 @@ class StanUNet(BaseModel):
     def __init__(
         self,
         n_channels: int = 3,
-        blocks: UNSTRUCTURED_BLOCK_ARGS = [64, 128, 256, 512, 1024],
+        blocks: UNSTRUCTURED_BLOCK_ARGS = [64, 128, 256, 512, 1024, 2048],
         autoencoder_mode: bool = False,
         bilinear: bool = False,
     ) -> None:

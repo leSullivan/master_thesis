@@ -1,7 +1,7 @@
 #!/bin/bash
 model_name="turbo_cyclegan"
 lambda_cycle="0"
-g_type="stan_unet_5_layer"
+g_type="stan_unet_6_layer"
 # d_type="vagan"
 lambda_perceptual="5"
 lambda_gan="0.5"

@@ -38,7 +38,7 @@ from src.config import (
     PROMPT_FENCE,
 )
 
-CHECKPOINT_PATH = os.getenv("CHECKPOINT_PATH", "/work/jw018njay-model_checkpoints/")
+CHECKPOINT_PATH = os.getenv("CHECKPOINT_PATH", "/work/jj17qosa-gan/")
 
 torch.cuda.empty_cache()
 

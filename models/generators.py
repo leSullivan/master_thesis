@@ -88,7 +88,7 @@ class Generator(pl.LightningModule):
                 use_dropout=True,
             )
         elif g_type == "stan_unet_6_layer":
-            self.model = StanUNet()
+            self.model = StanUNet(kwargs["ngf"])
         else:
             raise ValueError(f"Generator type '{g_type}' is not recognized.")
 
@@ -968,12 +968,13 @@ def get_encoder_output_channels(
 class StanUNet(BaseModel):
     def __init__(
         self,
+        ngf: int = 64,
         n_channels: int = 3,
-        blocks: UNSTRUCTURED_BLOCK_ARGS = [64, 128, 256, 512, 1024, 2048],
         autoencoder_mode: bool = False,
         bilinear: bool = False,
     ) -> None:
         super().__init__()
+        blocks = [ngf, 2 * ngf, 4 * ngf, 8 * ngf, 16 * ngf, 32 * ngf]
         blocks_args = standarize_blocks_args(blocks)
 
         self.encoder = UnetEncoder(

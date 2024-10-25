@@ -1,5 +1,5 @@
 REMOTE_SERVER="sc-uni"
-REMOTE_DIR="/work/jw018njay-model_checkpoints/"
+REMOTE_DIR="/work/jj17qosa-gan/"
 LOCAL_DIR="./tb_logs"
 
 mkdir -p "$LOCAL_DIR"

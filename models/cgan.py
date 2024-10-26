@@ -125,6 +125,11 @@ class CGAN(pl.LightningModule):
         self.manual_backward(loss_D)
         optimizer_D.step()
 
+    def on_train_end(self):
+        scheduler_G, scheduler_D = self.lr_schedulers()
+        scheduler_G.step()
+        scheduler_D.step()
+
     def validation_step(self, batch, batch_idx):
         if (
             not self.current_epoch % 20 == 0
@@ -192,7 +197,7 @@ class CGAN(pl.LightningModule):
                 final_div_factor=30,
             ),
             "name": "learning_rate",
-            "interval": "step",
+            "interval": "epoch",
             "frequency": 1,
         }
         scheduler_D = {
@@ -205,7 +210,7 @@ class CGAN(pl.LightningModule):
                 final_div_factor=30,
             ),
             "name": "learning_rate",
-            "interval": "step",
+            "interval": "epoch",
             "frequency": 1,
         }
 

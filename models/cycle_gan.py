@@ -236,10 +236,9 @@ class CycleGAN(pl.LightningModule):
         self.structure_loss.reset()
 
     def on_epoch_end(self):
-        current_lr_G = self.optimizers()[0].param_groups[0]["lr"]
-        current_lr_D = self.optimizers()[1].param_groups[0]["lr"]
-        self.log("learning_rate_G", current_lr_G, prog_bar=True)
-        self.log("learning_rate_D", current_lr_D, prog_bar=True)
+        scheduler_G, scheduler_D = self.lr_schedulers()
+        scheduler_G.step()
+        scheduler_D.step()
 
     def configure_optimizers(self):
         optimizer_G = torch.optim.AdamW(
@@ -255,24 +254,29 @@ class CycleGAN(pl.LightningModule):
             betas=(self.hparams.beta1, self.hparams.beta2),
         )
 
-        scheduler_G = torch.optim.lr_scheduler.StepLR(
-            optimizer_G, step_size=80, gamma=0.5
-        )
-        scheduler_D = torch.optim.lr_scheduler.StepLR(
-            optimizer_D, step_size=80, gamma=0.5
-        )
+        scheduler_G = {
+            "scheduler": torch.optim.lr_scheduler.OneCycleLR(
+                optimizer_G,
+                max_lr=self.hparams.lr,
+                total_steps=self.hparams.num_epochs,
+                anneal_strategy="linear",
+                final_div_factor=30,
+            ),
+            "name": "learning_rate",
+            "interval": "epoch",
+            "frequency": 1,
+        }
+        scheduler_D = {
+            "scheduler": torch.optim.lr_scheduler.OneCycleLR(
+                optimizer_D,
+                max_lr=self.hparams.lr,
+                total_steps=self.hparams.num_epochs,
+                anneal_strategy="linear",
+                final_div_factor=30,
+            ),
+            "name": "learning_rate",
+            "interval": "epoch",
+            "frequency": 1,
+        }
 
-        return [optimizer_G, optimizer_D], [
-            {
-                "scheduler": scheduler_G,
-                "interval": "epoch",
-                "frequency": 1,
-                "name": "lr_G",
-            },
-            {
-                "scheduler": scheduler_D,
-                "interval": "epoch",
-                "frequency": 1,
-                "name": "lr_D",
-            },
-        ]
+        return [optimizer_G, optimizer_D], [scheduler_G, scheduler_D]

@@ -125,7 +125,7 @@ class CGAN(pl.LightningModule):
         self.manual_backward(loss_D)
         optimizer_D.step()
 
-    def on_train_end(self):
+    def on_epoch_end(self):
         scheduler_G, scheduler_D = self.lr_schedulers()
         scheduler_G.step()
         scheduler_D.step()

@@ -50,6 +50,7 @@ def main(args):
         num_workers=NUM_WORKERS,
         img_h=args.img_h,
         img_w=args.img_w,
+        crop=args.crop,
     )
 
     if args.model_name.lower() == "cgan":
@@ -218,6 +219,12 @@ if __name__ == "__main__":
         "--lambda_perceptual",
         type=float,
         default=LAMBDA_PERCEPTUAL,
+    )
+
+    parser.add_argument(
+        "--crop",
+        type=bool,
+        default=False,
     )
 
     # checkpoint

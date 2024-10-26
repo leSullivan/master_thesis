@@ -10,39 +10,24 @@ from .config import IMG_CH, TRAIN_IMG_PATH
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
-class UnpairedImageDataset(Dataset):
-    def __init__(self, root_dir, domain, transform=None):
-        self.root_dir = os.path.join(root_dir, domain)
-        self.transform = transform
-        self.image_files = [
-            f
-            for f in os.listdir(self.root_dir)
-            if f.endswith(".jpg") or f.endswith(".png")
-        ]
-
-    def __len__(self):
-        return len(self.image_files)
-
-    def __getitem__(self, idx):
-        img_name = os.path.join(self.root_dir, self.image_files[idx])
-        image = Image.open(img_name).convert("RGB")
-
-        if self.transform:
-            image = self.transform(image)
-
-        return image
-
-
 class UnpairedImageDataModule(pl.LightningDataModule):
-    def __init__(self, img_h, img_w, batch_size, num_workers=4):
+    def __init__(self, img_h, img_w, batch_size, crop, num_workers=4):
         super().__init__()
         self.data_dir = TRAIN_IMG_PATH
         self.batch_size = batch_size
         self.num_workers = num_workers
+        self.crop = crop
+        self.img_h = img_h
+        self.img_w = img_w
 
+        # Conditional transform based on `crop` flag
         self.transform = transforms.Compose(
             [
-                transforms.Resize((img_h, img_w)),
+                (
+                    transforms.CenterCrop((self.img_h, self.img_w))
+                    if self.crop
+                    else transforms.Resize((self.img_h, self.img_w))
+                ),
                 transforms.ToTensor(),
                 transforms.Normalize((0.5,) * IMG_CH, (0.5,) * IMG_CH),
             ]
@@ -101,3 +86,26 @@ class PairedImageDataset(Dataset):
         bg_image = self.bg_dataset[idx]
         fence_image = self.fence_dataset[idx]
         return bg_image, fence_image
+
+
+class UnpairedImageDataset(Dataset):
+    def __init__(self, root_dir, domain, transform=None):
+        self.root_dir = os.path.join(root_dir, domain)
+        self.transform = transform
+        self.image_files = [
+            f
+            for f in os.listdir(self.root_dir)
+            if f.endswith(".jpg") or f.endswith(".png")
+        ]
+
+    def __len__(self):
+        return len(self.image_files)
+
+    def __getitem__(self, idx):
+        img_name = os.path.join(self.root_dir, self.image_files[idx])
+        image = Image.open(img_name).convert("RGB")
+
+        if self.transform:
+            image = self.transform(image)
+
+        return image

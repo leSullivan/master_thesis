@@ -191,7 +191,6 @@ class CGAN(pl.LightningModule):
             "scheduler": torch.optim.lr_scheduler.OneCycleLR(
                 optimizer_G,
                 max_lr=self.hparams.lr,
-                steps_per_epoch=int(len(self.train_dataloader())),
                 epochs=self.hparams.epochs,
                 anneal_strategy="linear",
                 final_div_factor=30,
@@ -204,7 +203,6 @@ class CGAN(pl.LightningModule):
             "scheduler": torch.optim.lr_scheduler.OneCycleLR(
                 optimizer_D,
                 max_lr=self.hparams.lr,
-                steps_per_epoch=int(len(self.train_dataloader())),
                 epochs=self.hparams.epochs,
                 anneal_strategy="linear",
                 final_div_factor=30,

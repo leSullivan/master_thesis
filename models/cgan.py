@@ -170,12 +170,6 @@ class CGAN(pl.LightningModule):
         self.log("eval/DINO", structure_loss, on_epoch=True)
         self.structure_loss.reset()
 
-    def on_epoch_end(self):
-        current_lr_G = self.optimizers()[0].param_groups[0]["lr"]
-        current_lr_D = self.optimizers()[1].param_groups[0]["lr"]
-        self.log("learning_rate_G", current_lr_G, prog_bar=True)
-        self.log("learning_rate_D", current_lr_D, prog_bar=True)
-
     def configure_optimizers(self):
         optimizer_G = torch.optim.AdamW(
             list(self.generator.parameters()),

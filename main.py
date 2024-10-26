@@ -72,7 +72,11 @@ def main(args):
 
     logger = TensorBoardLogger(
         CHECKPOINT_PATH,
-        name=f"ngf_{args.ngf}_{args.model_name}_{args.g_type}_{args.d_type}",
+        name=(
+            f"ngf_{args.ngf}_{args.model_name}_{args.g_type}_{args.d_type}"
+            if not args.crop
+            else f"CROP_ngf_{args.ngf}_{args.model_name}_{args.g_type}_{args.d_type}"
+        ),
     )
 
     lr_monitor = LearningRateMonitor(logging_interval="epoch")

@@ -8,7 +8,7 @@ IMG_H = 512
 IMG_CH = 3
 CROP = True
 
-G_TYPE = "stan_unet"
+G_TYPE = "unet_256"
 NGF = 64
 N_DOWNSAMPLING_RES_NET = 4
 N_DOWNSAMPLING_U_NET = 7

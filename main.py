@@ -36,6 +36,7 @@ from src.config import (
     LAMBDA_PERCEPTUAL,
     PROMPT_BG,
     PROMPT_FENCE,
+    CROP,
 )
 
 CHECKPOINT_PATH = os.getenv("CHECKPOINT_PATH", "/work/jj17qosa-gan/")
@@ -224,7 +225,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--crop",
         type=bool,
-        default=False,
+        default=CROP,
     )
 
     # checkpoint

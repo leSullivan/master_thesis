@@ -11,7 +11,7 @@ crop=True
 
 
 
-for model_name in cgan cyclegan; do 
+for model_name in cgan; do 
   for g_type in stan_unet_6_layer unet_128 unet_256 resnet-6 resnet-9; do
     for d_type in patch vagan; do
       for ngf in 32 64 128; do

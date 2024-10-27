@@ -6,7 +6,7 @@ MODEL_TYPE = "cgan"
 IMG_W = 768
 IMG_H = 512
 IMG_CH = 3
-CROP = True
+CROP = False
 
 G_TYPE = "unet_256"
 NGF = 64

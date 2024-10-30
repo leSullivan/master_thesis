@@ -38,6 +38,15 @@ class Generator(pl.LightningModule):
                 n_blocks=9,
             )
 
+        elif g_type == "resnet-skip-con":
+            self.model = ResNetGenerator(
+                kwargs["ngf"],
+                kwargs["n_downsampling"],
+                norm_layer,
+                input_nc,
+                use_skip_connections=True,
+            )
+
         elif g_type == "unet":
             self.model = UNetGenerator(
                 input_nc,
@@ -107,11 +116,14 @@ class ResNetGenerator(pl.LightningModule):
         input_channels,
         n_blocks=6,
         padding_type="reflect",
+        use_skip_connections=False,
     ):
         assert n_blocks >= 0
         super(ResNetGenerator, self).__init__()
+        self.use_skip_connections = use_skip_connections
         activation = nn.ReLU(True)
 
+        # Initial layers
         self.initial_layers = nn.Sequential(
             nn.ReflectionPad2d(3),
             nn.Conv2d(input_channels, ngf, kernel_size=7, padding=0),
@@ -150,7 +162,7 @@ class ResNetGenerator(pl.LightningModule):
             self.upsample_layers.append(
                 nn.Sequential(
                     nn.ConvTranspose2d(
-                        ngf * mult,
+                        ngf * mult if not self.use_skip_connections else ngf * mult * 2,
                         int(ngf * mult / 2),
                         kernel_size=3,
                         stride=2,
@@ -162,6 +174,7 @@ class ResNetGenerator(pl.LightningModule):
                 )
             )
 
+        # Final layers
         self.final_layers = nn.Sequential(
             nn.ReflectionPad2d(3),
             nn.Conv2d(ngf, input_channels, kernel_size=7, padding=0),
@@ -171,16 +184,24 @@ class ResNetGenerator(pl.LightningModule):
     def forward(self, input):
         x = self.initial_layers(input)
 
-        # Downsample
+        # Downsample with skip connection storage
+        downsample_outputs = []
         for layer in self.downsample_layers:
             x = layer(x)
+            if self.use_skip_connections:
+                downsample_outputs.append(x)  # Store outputs for skip connections
 
         # ResNet blocks
         for block in self.resnet_blocks:
             x = block(x)
 
-        # Upsample
-        for layer in self.upsample_layers:
+        # Upsample with optional skip connections
+        for i, layer in enumerate(self.upsample_layers):
+            if self.use_skip_connections:
+                skip = downsample_outputs[-(i + 1)]  # Get corresponding skip connection
+                x = torch.cat(
+                    [x, skip], dim=1
+                )  # Concatenate along the channel dimension
             x = layer(x)
 
         return self.final_layers(x)

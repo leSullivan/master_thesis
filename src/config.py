@@ -6,9 +6,9 @@ MODEL_TYPE = "cgan"
 IMG_W = 768
 IMG_H = 512
 IMG_CH = 3
-CROP = False
+CROP = True
 
-G_TYPE = "unet_256"
+G_TYPE = "resnet-skip-con"
 NGF = 64
 N_DOWNSAMPLING_RES_NET = 5
 N_DOWNSAMPLING_U_NET = 7

@@ -114,8 +114,6 @@ def main(args):
         callbacks=[checkpoint_callback, lr_monitor],
         detect_anomaly=True,
         deterministic=True,
-        gradient_clip_val=1.0,
-        gradient_clip_algorithm="norm",
     )
 
     trainer.fit(model, data_module)

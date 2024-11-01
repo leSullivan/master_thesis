@@ -136,8 +136,8 @@ class CGAN(pl.LightningModule):
         self.manual_backward(loss_D)
         optimizer_D.step()
 
-        if self.current_epoch % 20 == 0 and self.current_epoch != 0:
-            self.fake_imgs.append(generated_fences)
+        if self.current_epoch % 5 == 0 and self.current_epoch != 0:
+            self.fake_imgs.append(*generated_fences)
 
     def validation_step(self, batch, batch_idx):
         if (

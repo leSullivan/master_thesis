@@ -3,6 +3,7 @@ import torch
 import argparse
 import pytorch_lightning as pl
 
+from pytorch_lightning.strategies import DDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
@@ -90,7 +91,12 @@ def main(args):
         save_last=True,
     )
 
+    ddp = DDPStrategy(
+        process_group_backend="nccl",
+    )
+
     trainer = pl.Trainer(
+        strategy=ddp,
         max_epochs=args.num_epochs,
         num_nodes=1,
         log_every_n_steps=1,

@@ -1,6 +1,7 @@
 import os
 import torch
 import argparse
+import datetime
 import pytorch_lightning as pl
 
 from pytorch_lightning.strategies import DDPStrategy
@@ -91,18 +92,30 @@ def main(args):
         save_last=True,
     )
 
+    os.environ["MASTER_PORT"] = "29500"
+    os.environ["NCCL_DEBUG"] = "INFO"
+    os.environ["NCCL_SOCKET_IFNAME"] = "^docker0,lo"
+
     ddp = DDPStrategy(
         process_group_backend="nccl",
+        find_unused_parameters=False,
+        gradient_as_bucket_view=True,
+        timeout=datetime.timedelta(seconds=1800),
+        cluster_environment=None,
     )
 
     trainer = pl.Trainer(
         strategy=ddp,
         max_epochs=args.num_epochs,
         num_nodes=1,
-        log_every_n_steps=1,
+        log_every_n_steps=10,
         logger=logger,
         accelerator="gpu" if torch.cuda.is_available() else "mps",
         callbacks=[checkpoint_callback, lr_monitor],
+        detect_anomaly=True,
+        deterministic=True,
+        gradient_clip_val=1.0,
+        gradient_clip_algorithm="norm",
     )
 
     trainer.fit(model, data_module)

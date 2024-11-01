@@ -8,7 +8,7 @@ IMG_H = 512
 IMG_CH = 3
 CROP = True
 
-G_TYPE = "resnet-skip-con"
+G_TYPE = "unet_128"
 NGF = 64
 N_DOWNSAMPLING_RES_NET = 5
 N_DOWNSAMPLING_U_NET = 7

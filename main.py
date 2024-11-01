@@ -75,9 +75,9 @@ def main(args):
     logger = TensorBoardLogger(
         CHECKPOINT_PATH,
         name=(
-            f"ngf_{args.ngf}_{args.model_name}_{args.g_type}_{args.d_type}"
+            f"{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
             if not args.crop
-            else f"CROP_ngf_{args.ngf}_{args.model_name}_{args.g_type}_{args.d_type}"
+            else f"CROP_{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
         ),
     )
 

@@ -4,7 +4,7 @@
 #SBATCH --output=slurm_res/output_%j.txt    
 #SBATCH --error=slurm_res/error_%j.txt 
 #SBATCH --nodes=1         
-#SBATCH --ntasks-per-node=1             
+#SBATCH --ntasks-per-node=2         
 #SBATCH --cpus-per-task=4            
 #SBATCH --mem-per-gpu=36G                               
 #SBATCH --gres=gpu:v100:2

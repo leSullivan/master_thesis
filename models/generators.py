@@ -96,8 +96,6 @@ class Generator(pl.LightningModule):
                 norm_layer,
                 use_dropout=True,
             )
-        elif g_type == "stan_unet_6_layer":
-            self.model = StanUNet(kwargs["ngf"])
         else:
             raise ValueError(f"Generator type '{g_type}' is not recognized.")
 

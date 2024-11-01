@@ -31,7 +31,7 @@ class TurboCycleGAN(pl.LightningModule):
         self.generator = SDTurboGenerator(
             prompt_bg=prompt_bg,
             prompt_fence=prompt_fence,
-        )ƒ
+        )
 
         self.discriminator_Bg = Discriminator(
             ndf=ndf,

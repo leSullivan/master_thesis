@@ -204,7 +204,7 @@ class CGAN(pl.LightningModule):
             "scheduler": torch.optim.lr_scheduler.StepLR(
                 optimizer_G, step_size=80, gamma=0.5
             ),
-            "name": "optimizer_G",
+            "name": "lr/_optimizer_G",
             "interval": "epoch",
             "frequency": 1,
         }
@@ -212,7 +212,7 @@ class CGAN(pl.LightningModule):
             "scheduler": torch.optim.lr_scheduler.StepLR(
                 optimizer_D, step_size=80, gamma=0.5
             ),
-            "name": "optimizer_D",
+            "name": "lr/_optimizer_D",
             "interval": "epoch",
             "frequency": 1,
         }

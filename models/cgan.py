@@ -55,10 +55,9 @@ class CGAN(pl.LightningModule):
         self.automatic_optimization = False
 
     def on_train_start(self):
-        imgs = [
-            fence_imgs
-            for fence_imgs in self.trainer.datamodule.train_dataloader()["fence"]
-        ]
+        imgs = []
+        for fence_imgs in self.trainer.datamodule.train_dataloader()["fence"]
+            imgs.append(fence_imgs)
 
         fence_imgs = imgs.to(self.device)
         fence_imgs = preprocess_for_fid(fence_imgs)

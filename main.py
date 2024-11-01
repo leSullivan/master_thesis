@@ -98,6 +98,7 @@ def main(args):
     )
 
     trainer = pl.Trainer(
+        precision="16-mixed",
         strategy=ddp,
         max_epochs=args.num_epochs,
         num_nodes=1,

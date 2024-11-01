@@ -33,6 +33,8 @@ class TurboCycleGAN(pl.LightningModule):
             prompt_fence=prompt_fence,
         )
 
+        self.generator.enable_gradient_checkpointing()
+
         self.discriminator_Bg = Discriminator(
             ndf=ndf,
             nd_layers=nd_layers,

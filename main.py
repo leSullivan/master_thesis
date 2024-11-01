@@ -92,16 +92,9 @@ def main(args):
         save_last=True,
     )
 
-    os.environ["MASTER_PORT"] = "29500"
-    os.environ["NCCL_DEBUG"] = "INFO"
-    os.environ["NCCL_SOCKET_IFNAME"] = "^docker0,lo"
-
     ddp = DDPStrategy(
-        process_group_backend="nccl",
+        process_group_backend="gloo",
         find_unused_parameters=False,
-        gradient_as_bucket_view=True,
-        timeout=datetime.timedelta(seconds=1800),
-        cluster_environment=None,
     )
 
     trainer = pl.Trainer(

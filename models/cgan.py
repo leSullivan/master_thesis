@@ -137,7 +137,7 @@ class CGAN(pl.LightningModule):
         optimizer_D.step()
 
         if self.current_epoch % 5 == 0 and self.current_epoch != 0:
-            self.fake_imgs.append(*generated_fences)
+            self.fake_imgs.append(generated_fences)
 
     def validation_step(self, batch, batch_idx):
         if (
@@ -161,7 +161,8 @@ class CGAN(pl.LightningModule):
             "eval/Generated_Images", grid, self.current_epoch
         )
 
-        norm_gen_fences = preprocess_for_fid(self.fake_imgs)
+        fake_fence_imgs = torch.cat([*self.fake_imgs], dim=0).to(self.device)
+        norm_gen_fences = preprocess_for_fid(fake_fence_imgs)
         self.fid.update(norm_gen_fences, real=False)
 
         self.structure_loss.update_dino_struct_loss(bg_imgs, generated_fences)

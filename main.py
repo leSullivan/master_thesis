@@ -93,7 +93,7 @@ def main(args):
     )
 
     ddp = DDPStrategy(
-        process_group_backend="gloo",
+        process_group_backend="nccl",
         find_unused_parameters=False,
     )
 

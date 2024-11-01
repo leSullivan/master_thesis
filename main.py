@@ -94,7 +94,7 @@ def main(args):
 
     ddp = DDPStrategy(
         process_group_backend="nccl",
-        find_unused_parameters=False,
+        find_unused_parameters=True,
     )
 
     trainer = pl.Trainer(

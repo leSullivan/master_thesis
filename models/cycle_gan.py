@@ -236,8 +236,8 @@ class CycleGAN(pl.LightningModule):
 
         self.logger.experiment.add_image("Generated_Images", grid, self.current_epoch)
 
-        fake_fence_imgs = torch.cat([*self.fake_imgs], dim=0).to(self.device)
-        norm_gen_fences = preprocess_for_fid(fake_fence_imgs)
+        all_fake_fence_imgs = torch.cat([*self.fake_imgs], dim=0).to(self.device)
+        norm_gen_fences = preprocess_for_fid(all_fake_fence_imgs)
         self.fid.update(norm_gen_fences, real=False)
 
         self.structure_loss.update_dino_struct_loss(bg_imgs, fake_fence_imgs)

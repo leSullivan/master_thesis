@@ -24,12 +24,12 @@ for model_name in cgan; do
           else
             sbatch --export=MODEL_NAME=$model_name,LAMBDA_CYCLE=$lambda_cycle,G_TYPE=$g_type,D_TYPE=$d_type,LAMBDA_PERCEPTUAL=$lambda_perceptual,LAMBDA_GAN=$lambda_gan,NGF=$ngf,CROP=$crop slurm_template.sh
           fi
-          done
         done
       done
     done
   done
 done
+
 
 # for model_name in cyclegan; do 
 #   # for g_type in resnet-6 resnet-skip-con; do

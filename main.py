@@ -75,7 +75,7 @@ def main(args):
     logger = TensorBoardLogger(
         CHECKPOINT_PATH,
         name=(
-            f"PERCEP_{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
+            f"{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
             if not args.crop
             else f"CROP_{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
         ),
@@ -94,7 +94,7 @@ def main(args):
 
     ddp = DDPStrategy(
         process_group_backend="nccl",
-        find_unused_parameters=True,
+        # find_unused_parameters=True,
     )
 
     trainer = pl.Trainer(

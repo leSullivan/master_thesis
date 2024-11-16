@@ -77,7 +77,7 @@ def main(args):
         name=(
             f"{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
             if not args.crop
-            else f"CROP_NGFTESTS_{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
+            else f"PERCEP_CROP_{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
         ),
     )
 

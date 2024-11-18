@@ -53,7 +53,7 @@ def main(args):
         num_workers=NUM_WORKERS,
         img_h=args.img_h,
         img_w=args.img_w,
-        crop=args.crop,
+        crop=CROP,
     )
 
     if args.model_name.lower() == "cgan":
@@ -76,7 +76,7 @@ def main(args):
         CHECKPOINT_PATH,
         name=(
             f"{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
-            if not args.crop
+            if not CROP
             else f"CROP_{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
         ),
     )

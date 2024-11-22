@@ -9,10 +9,12 @@
 #SBATCH --mem-per-gpu=36G                               
 #SBATCH --gres=gpu:v100:2
 #SBATCH --time=48:00:00
-#SBATCH --signal=SIGUSR1@90
 
 # Load necessary modules
+export NCCL_DEBUG=INFO
+
 source python_env/bin/activate
+module load NCCL
 
 # Run your training script
 python main.py --model_name=$MODEL_NAME --g_type=$G_TYPE --d_type=$D_TYPE --lambda_cycle=$LAMBDA_CYCLE --lambda_perceptual=$LAMBDA_PERCEPTUAL --lambda_gan=$LAMBDA_GAN --ngf=$NGF --crop=$CROP

@@ -92,10 +92,11 @@ def main(args):
         save_last=True,
     )
 
-    # ddp = DDPStrategy(
-    #     process_group_backend="nccl",
-    #     # find_unused_parameters=True,
-    # )
+    ddp = DDPStrategy(
+        process_group_backend="nccl",
+        find_unused_parameters=False,
+        gradient_as_bucket_view=True,
+    )
 
     trainer = pl.Trainer(
         precision="16-mixed",

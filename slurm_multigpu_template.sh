@@ -6,8 +6,8 @@
 #SBATCH --nodes=1         
 #SBATCH --ntasks-per-node=2         
 #SBATCH --cpus-per-task=4            
-#SBATCH --mem-per-gpu=36G                               
-#SBATCH --gres=gpu:v100:2
+#SBATCH --mem=108GB                            
+#SBATCH --gres=gpu:v100:3
 #SBATCH --time=48:00:00
 
 # Load necessary modules

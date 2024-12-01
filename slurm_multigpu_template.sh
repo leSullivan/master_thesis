@@ -14,7 +14,7 @@
 module load NCCL
 
 #Overwrite SLURM Env
-export SLURM_TRES_PER_TASK="cpu=4"
+unset SLURM_TRES_PER_TASK
 
 # Set up NCCL environment
 export NCCL_DEBUG=INFO

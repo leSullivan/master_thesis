@@ -5,13 +5,16 @@
 #SBATCH --error=slurm_res/error_%j.txt 
 #SBATCH --nodes=1         
 #SBATCH --ntasks-per-node=1       
-#SBATCH --cpus-per-task=4            
+#SBATCH --cpus=4            
 #SBATCH --mem=200GB                            
 #SBATCH --gres=gpu:v100:4
 #SBATCH --time=48:00:00
 
 # Load necessary modules
 module load NCCL
+
+#Overwrite SLURM Env
+export SLURM_TRES_PER_TASK="cpu=4"
 
 # Set up NCCL environment
 export NCCL_DEBUG=INFO

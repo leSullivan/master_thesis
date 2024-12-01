@@ -100,8 +100,8 @@ def main(args):
     # )
 
     trainer = pl.Trainer(
-        precision="16-mixed",
-        strategy=FSDPStrategy(),
+        precision="16",
+        strategy=FSDPStrategy(cpu_offload=True),
         max_epochs=args.num_epochs,
         num_nodes=1,
         log_every_n_steps=10,

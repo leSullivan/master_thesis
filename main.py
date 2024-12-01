@@ -101,9 +101,10 @@ def main(args):
 
     trainer = pl.Trainer(
         precision="16",
-        strategy=ddp,
+        strategy="fsdp",
         max_epochs=args.num_epochs,
         num_nodes=1,
+        devices=4,
         log_every_n_steps=10,
         logger=logger,
         accelerator="gpu" if torch.cuda.is_available() else "mps",

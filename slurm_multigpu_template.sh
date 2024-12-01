@@ -2,19 +2,14 @@
 #SBATCH --job-name=gan_exploration    
 #SBATCH --partition=clara
 #SBATCH --output=slurm_res/output_%j.txt    
-#SBATCH --error=slurm_res/error_%j.txt 
-#SBATCH --nodes=1         
-#SBATCH --ntasks-per-node=1       
-#SBATCH --cpus-per-task=4          
-#SBATCH --mem=200GB                            
+#SBATCH --error=slurm_res/error_%j.txt        
+#SBATCH --cpus-per-task=4            
+#SBATCH --mem=160GB                            
 #SBATCH --gres=gpu:v100:4
 #SBATCH --time=48:00:00
 
 # Load necessary modules
 module load NCCL
-
-#Overwrite SLURM Env
-unset SLURM_TRES_PER_TASK
 
 # Set up NCCL environment
 export NCCL_DEBUG=INFO

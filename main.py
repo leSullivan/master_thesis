@@ -1,12 +1,13 @@
 import os
+import gc
 import torch
 import argparse
-import datetime
 import pytorch_lightning as pl
 
-from pytorch_lightning.strategies import DDPStrategy
+from pytorch_lightning.strategies import DDPStrategy, FSDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
+
 
 from src.create_training_dataset import sample_images
 from src.data_pipeline import UnpairedImageDataModule
@@ -92,15 +93,15 @@ def main(args):
         save_last=True,
     )
 
-    ddp = DDPStrategy(
-        process_group_backend="nccl",
-        find_unused_parameters=False,
-        gradient_as_bucket_view=True,
-    )
+    # ddp = DDPStrategy(
+    #     process_group_backend="nccl",
+    #     find_unused_parameters=False,
+    #     gradient_as_bucket_view=True,
+    # )
 
     trainer = pl.Trainer(
         precision="16-mixed",
-        # strategy=ddp,
+        strategy=FSDPStrategy(),
         max_epochs=args.num_epochs,
         num_nodes=1,
         log_every_n_steps=10,
@@ -129,6 +130,8 @@ def _get_checkpoint_path(model_name, version_name):
 
 
 if __name__ == "__main__":
+    torch.cuda.empty_cache()
+    gc.collect()
     parser = argparse.ArgumentParser(description="Train a GAN model")
 
     # Training Setup

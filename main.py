@@ -96,15 +96,13 @@ def main(args):
     ddp = DDPStrategy(
         process_group_backend="nccl",
         find_unused_parameters=False,
-        gradient_as_bucket_view=True,
     )
 
     trainer = pl.Trainer(
-        precision="16",
-        strategy="fsdp",
+        precision="16-mixed",
+        strategy=ddp,
         max_epochs=args.num_epochs,
         num_nodes=1,
-        devices=4,
         log_every_n_steps=10,
         logger=logger,
         accelerator="gpu" if torch.cuda.is_available() else "mps",

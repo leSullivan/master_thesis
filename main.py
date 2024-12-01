@@ -93,15 +93,15 @@ def main(args):
         save_last=True,
     )
 
-    # ddp = DDPStrategy(
-    #     process_group_backend="nccl",
-    #     find_unused_parameters=False,
-    #     gradient_as_bucket_view=True,
-    # )
+    ddp = DDPStrategy(
+        process_group_backend="nccl",
+        find_unused_parameters=False,
+        gradient_as_bucket_view=True,
+    )
 
     trainer = pl.Trainer(
         precision="16",
-        strategy=FSDPStrategy(cpu_offload=True),
+        strategy=ddp,
         max_epochs=args.num_epochs,
         num_nodes=1,
         log_every_n_steps=10,

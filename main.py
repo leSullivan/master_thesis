@@ -70,8 +70,8 @@ def main(args):
         assert args.model_name in args.checkpoint_path, "Checkpoint model name mismatch"
         path = _get_checkpoint_path(args.model_name, args.checkpoint_path)
         model = GAN.load_from_checkpoint(path).to(torch.float32)
-    else:
-        model = GAN.to(torch.float32)
+    # else:
+    # model = GAN.to(torch.float32)
 
     logger = TensorBoardLogger(
         CHECKPOINT_PATH,
@@ -95,8 +95,9 @@ def main(args):
 
     trainer = pl.Trainer(
         precision="16-mixed",
-        strategy="ddp",
+        strategy=FSDPStrategy(activation_checkpointing=True, mixed_precision=True),
         max_epochs=args.num_epochs,
+        devices=2,
         log_every_n_steps=10,
         logger=logger,
         accelerator="gpu" if torch.cuda.is_available() else "mps",

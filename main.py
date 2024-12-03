@@ -93,21 +93,14 @@ def main(args):
         save_last=True,
     )
 
-    ddp = DDPStrategy(
-        process_group_backend="nccl",
-        find_unused_parameters=False,
-    )
-
     trainer = pl.Trainer(
         precision="16-mixed",
-        strategy=ddp,
+        strategy="ddp",
         max_epochs=args.num_epochs,
-        num_nodes=1,
         log_every_n_steps=10,
         logger=logger,
         accelerator="gpu" if torch.cuda.is_available() else "mps",
         callbacks=[checkpoint_callback, lr_monitor],
-        accumulate_grad_batches=1,
     )
 
     trainer.fit(model, data_module)

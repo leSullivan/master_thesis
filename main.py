@@ -70,8 +70,8 @@ def main(args):
         assert args.model_name in args.checkpoint_path, "Checkpoint model name mismatch"
         path = _get_checkpoint_path(args.model_name, args.checkpoint_path)
         model = GAN.load_from_checkpoint(path).to(torch.float32)
-    # else:
-    # model = GAN.to(torch.float32)
+    else:
+        model = GAN
 
     logger = TensorBoardLogger(
         CHECKPOINT_PATH,

@@ -224,7 +224,7 @@ class CycleGAN(pl.LightningModule):
         ):
             return
 
-        bg_imgs, fence_imgs = batch
+        bg_imgs, _ = batch
 
         fake_fence_imgs = self.generator_Bg2Fence(bg_imgs)
 
@@ -246,7 +246,6 @@ class CycleGAN(pl.LightningModule):
         if (
             not self.current_epoch % 20 == 0
             or self.current_epoch == 0
-            or not self.calculate_scores_during_training
         ):
             return
         fid_score = self.fid.compute().item()

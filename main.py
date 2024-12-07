@@ -4,7 +4,7 @@ import torch
 import argparse
 import pytorch_lightning as pl
 
-from pytorch_lightning.strategies import DDPStrategy, FSDPStrategy
+from pytorch_lightning.strategies import FSDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
@@ -69,16 +69,16 @@ def main(args):
     if args.checkpoint_version_name is not None:
         assert args.model_name in args.checkpoint_path, "Checkpoint model name mismatch"
         path = _get_checkpoint_path(args.model_name, args.checkpoint_path)
-        model = GAN.load_from_checkpoint(path).to(torch.float32)
+        model = GAN.load_from_checkpoint(path)
     else:
         model = GAN
 
     logger = TensorBoardLogger(
         CHECKPOINT_PATH,
         name=(
-            f"{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
+            f"{args.model_name}_{args.g_type}_{args.d_type}_ngf{args.ngf}_perc{args.lambda_perceptual}_cyc{args.lambda_cycle}"
             if not CROP
-            else f"CROP_{args.model_name}_{args.g_type}_{args.d_type}_ngf_{args.ngf}_perc_{args.lambda_perceptual}"
+            else f"CROP_{args.model_name}_{args.g_type}_{args.d_type}_ngf{args.ngf}_perc{args.lambda_perceptual}_cyc{args.lambda_cycle}"
         ),
     )
 
@@ -93,11 +93,20 @@ def main(args):
         save_last=True,
     )
 
+    # trainer = pl.Trainer(
+    #     precision="16-mixed",
+    #     strategy=FSDPStrategy(activation_checkpointing_policy=True),
+    #     max_epochs=args.num_epochs,
+    #     devices=2,
+    #     log_every_n_steps=10,
+    #     logger=logger,
+    #     accelerator="gpu" if torch.cuda.is_available() else "mps",
+    #     callbacks=[checkpoint_callback, lr_monitor],
+    # )
+
     trainer = pl.Trainer(
         precision="16-mixed",
-        strategy=FSDPStrategy(activation_checkpointing_policy=True),
         max_epochs=args.num_epochs,
-        devices=2,
         log_every_n_steps=10,
         logger=logger,
         accelerator="gpu" if torch.cuda.is_available() else "mps",

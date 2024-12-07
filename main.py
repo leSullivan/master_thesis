@@ -95,9 +95,7 @@ def main(args):
 
     trainer = pl.Trainer(
         precision="16-mixed",
-        strategy=FSDPStrategy(
-            activation_checkpointing_policy={True}, mixed_precision=True
-        ),
+        strategy=FSDPStrategy(activation_checkpointing_policy=True),
         max_epochs=args.num_epochs,
         devices=2,
         log_every_n_steps=10,

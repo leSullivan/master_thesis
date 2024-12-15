@@ -95,7 +95,7 @@ def main(args):
 
     if args.model_name.lower() == "turbo_cyclegan":
         trainer = pl.Trainer(
-            strategy=FSDPStrategy(activation_checkpointing_policy=True),
+            strategy=FSDPStrategy(),
             max_epochs=args.num_epochs,
             devices=3,
             logger=logger,

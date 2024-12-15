@@ -6,7 +6,7 @@ from torchmetrics.image.fid import FrechetInceptionDistance
 from torchvision.utils import make_grid
 
 from models import SDTurboGenerator, Discriminator
-from .utils import preprocess_for_fid, DinoStructureLoss
+from .utils import preprocess_for_fid, init_weights, init_gan_loss, DinoStructureLoss
 
 
 class TurboCycleGAN(pl.LightningModule):
@@ -18,8 +18,6 @@ class TurboCycleGAN(pl.LightningModule):
         nd_layers,
         prompt_bg,
         prompt_fence,
-        lambda_cycle,
-        lambda_identity,
         d_use_sigmoid,
         calculate_scores_during_training,
         *args,
@@ -49,14 +47,19 @@ class TurboCycleGAN(pl.LightningModule):
             d_use_sigmoid=d_use_sigmoid,
         )
 
-        self.criterion_gan = self.init_adv_loss()
+        self.fid = FrechetInceptionDistance()
+        self.structure_loss = DinoStructureLoss()
+
+        init_weights(self.discriminator_Bg, d_type)
+        init_weights(self.discriminator_Fence, d_type)
+
+        self.criterion_gan = init_gan_loss(d_type=d_type)
         self.criterion_cycle = nn.L1Loss()
+        self.criterion_identity = nn.L1Loss()
         self.criterion_perceptual = lpips.LPIPS(net="vgg").requires_grad_(False)
 
-        self.lambda_cycle = lambda_cycle
-        self.lambda_identity = lambda_identity
-
-        self.fid = FrechetInceptionDistance()
+        self.fid = FrechetInceptionDistance(reset_real_features=False)
+        self.fake_imgs = []
         self.structure_loss = DinoStructureLoss()
 
         self.calculate_scores_during_training = calculate_scores_during_training
@@ -196,6 +199,9 @@ class TurboCycleGAN(pl.LightningModule):
         self.manual_backward(loss_D)
         optimizer_D.step()
 
+        if self.current_epoch % 20 == 0 and self.current_epoch != 0:
+            self.fake_imgs.append(fake_fences)
+
     def validation_step(self, batch, batch_idx):
         if (
             not self.current_epoch % 20 == 0
@@ -204,8 +210,9 @@ class TurboCycleGAN(pl.LightningModule):
         ):
             return
 
-        bg_imgs, fence_imgs = batch
-        fake_fence_imgs = self.generator.forward(bg_imgs, "Bg2Fence")
+        bg_imgs, _ = batch
+
+        fake_fence_imgs = self.generator_Bg2Fence(bg_imgs)
 
         grid = make_grid(
             torch.cat((bg_imgs, fake_fence_imgs), dim=0),
@@ -215,17 +222,22 @@ class TurboCycleGAN(pl.LightningModule):
 
         self.logger.experiment.add_image("Generated_Images", grid, self.current_epoch)
 
-        norm_fence_imgs = preprocess_for_fid(fence_imgs)
-        norm_fake_fences = preprocess_for_fid(fake_fence_imgs)
-        self.fid.update(norm_fence_imgs, real=True)
-        self.fid.update(norm_fake_fences, real=False)
-        fid_score = self.fid.compute().item()
-        self.log("FID", fid_score, on_epoch=True)
-        self.fid.reset()
+        all_fake_fence_imgs = torch.cat([*self.fake_imgs], dim=0).to(self.device)
+        norm_gen_fences = preprocess_for_fid(all_fake_fence_imgs)
+        self.fid.update(norm_gen_fences, real=False)
 
         self.structure_loss.update_dino_struct_loss(bg_imgs, fake_fence_imgs)
+
+    def on_validation_epoch_end(self):
+        if not self.current_epoch % 20 == 0 or self.current_epoch == 0:
+            return
+        fid_score = self.fid.compute().item()
+        self.log("eval/FID", fid_score, on_epoch=True)
+        self.fid.reset()
+        self.fake_imgs = []
+
         structure_loss = self.structure_loss.compute()
-        self.log("DINO", structure_loss, on_epoch=True)
+        self.log("eval/DINO", structure_loss)
         self.structure_loss.reset()
 
     def on_epoch_end(self):
@@ -247,27 +259,18 @@ class TurboCycleGAN(pl.LightningModule):
         )
 
         scheduler_G = {
-            "scheduler": torch.optim.lr_scheduler.OneCycleLR(
-                optimizer_G,
-                max_lr=self.hparams.lr,
-                total_steps=self.hparams.num_epochs,
-                anneal_strategy="linear",
-                final_div_factor=30,
+            "scheduler": torch.optim.lr_scheduler.StepLR(
+                optimizer_G, step_size=80, gamma=0.5
             ),
-            "name": "learning_rate",
+            "name": "lr/_optimizer_G",
             "interval": "epoch",
             "frequency": 1,
         }
-
         scheduler_D = {
-            "scheduler": torch.optim.lr_scheduler.OneCycleLR(
-                optimizer_D,
-                max_lr=self.hparams.lr,
-                total_steps=self.hparams.num_epochs,
-                anneal_strategy="linear",
-                final_div_factor=30,
+            "scheduler": torch.optim.lr_scheduler.StepLR(
+                optimizer_D, step_size=80, gamma=0.5
             ),
-            "name": "learning_rate",
+            "name": "lr/_optimizer_D",
             "interval": "epoch",
             "frequency": 1,
         }

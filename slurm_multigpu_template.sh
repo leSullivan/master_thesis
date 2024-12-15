@@ -38,4 +38,7 @@ srun python main.py \
     --lambda_perceptual=$LAMBDA_PERCEPTUAL \
     --lambda_gan=$LAMBDA_GAN \
     --ngf=$NGF \
-    --crop=$CROP
+    --crop=$CROP \
+    --batch_size=1 \
+    --img-h=256 \
+    --img-w=256

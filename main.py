@@ -93,25 +93,21 @@ def main(args):
         save_last=True,
     )
 
-    # trainer = pl.Trainer(
-    #     precision="16-mixed",
-    #     strategy=FSDPStrategy(activation_checkpointing_policy=True),
-    #     max_epochs=args.num_epochs,
-    #     devices=2,
-    #     log_every_n_steps=10,
-    #     logger=logger,
-    #     accelerator="gpu" if torch.cuda.is_available() else "mps",
-    #     callbacks=[checkpoint_callback, lr_monitor],
-    # )
-
-    trainer = pl.Trainer(
-        precision="16-mixed",
-        max_epochs=args.num_epochs,
-        log_every_n_steps=10,
-        logger=logger,
-        accelerator="gpu" if torch.cuda.is_available() else "mps",
-        callbacks=[checkpoint_callback, lr_monitor],
-    )
+    if args.model_name.lower() == "turbo_cyclegan":
+        trainer = pl.Trainer(
+            strategy=FSDPStrategy(activation_checkpointing_policy=True),
+            max_epochs=args.num_epochs,
+            devices=3,
+            logger=logger,
+            callbacks=[checkpoint_callback, lr_monitor],
+        )
+    else:
+        trainer = pl.Trainer(
+            precision="16-mixed",
+            max_epochs=args.num_epochs,
+            logger=logger,
+            callbacks=[checkpoint_callback, lr_monitor],
+        )
 
     trainer.fit(model, data_module)
 

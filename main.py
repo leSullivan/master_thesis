@@ -97,8 +97,9 @@ def main(args):
         trainer = pl.Trainer(
             strategy=FSDPStrategy(),
             max_epochs=args.num_epochs,
-            devices=3,
             logger=logger,
+            accelerator="cuda",
+            devices=4,
             callbacks=[checkpoint_callback, lr_monitor],
         )
     else:

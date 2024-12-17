@@ -216,7 +216,7 @@ class TurboCycleGAN(pl.LightningModule):
 
         self.logger.experiment.add_image("Generated_Images", grid, self.current_epoch)
 
-        all_fake_fence_imgs = torch.cat([*self.fake_imgs], dim=0).to(self.device)
+        all_fake_fence_imgs = torch.cat([*self.fake_imgs], dim=0).to(bg_imgs.device)
         norm_gen_fences = preprocess_for_fid(all_fake_fence_imgs)
         self.fid.update(norm_gen_fences, real=False)
 

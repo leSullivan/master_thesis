@@ -387,18 +387,15 @@ class SDTurboGenerator(pl.LightningModule):
         model="sd-turbo",
     ):
         super(SDTurboGenerator, self).__init__()
-        device = get_device()
+        # Let Lightning handle the device management instead of manual assignment
+        # Remove the get_device() call as Lightning will handle this
 
         self.unet = initialize_unet(model=model)
-        # unet.enable_xformers_memory_efficient_attention()
-        # unet.enable_gradient_checkpointing()
-        vae = initialize_vae(model=model)
-        self.vae = vae
+        self.vae = initialize_vae(model=model)
+        self.scheduler = get_1step_sched(model=model)  # Remove device parameter
 
-        self.scheduler = get_1step_sched(device, model=model)
-
-        self.encoder = VAE_encode(vae, copy.deepcopy(vae))
-        self.decoder = VAE_decode(vae, copy.deepcopy(vae))
+        self.encoder = VAE_encode(self.vae, copy.deepcopy(self.vae))
+        self.decoder = VAE_decode(self.vae, copy.deepcopy(self.vae))
 
         tokenizer = AutoTokenizer.from_pretrained(
             f"stabilityai/{model}",
@@ -410,6 +407,7 @@ class SDTurboGenerator(pl.LightningModule):
             f"stabilityai/{model}", subfolder="text_encoder"
         )
 
+        # Move token processing to device-aware context
         fence_prompt_tokens = tokenizer(
             prompt_fence,
             max_length=tokenizer.model_max_length,
@@ -417,7 +415,6 @@ class SDTurboGenerator(pl.LightningModule):
             truncation=True,
             return_tensors="pt",
         ).input_ids[0]
-        self.bg2fence_emb = text_encoder(fence_prompt_tokens.unsqueeze(0))[0].detach()
 
         bg_prompt_tokens = tokenizer(
             prompt_bg,
@@ -426,24 +423,29 @@ class SDTurboGenerator(pl.LightningModule):
             truncation=True,
             return_tensors="pt",
         ).input_ids[0]
-        self.fence2bg_emb = text_encoder(bg_prompt_tokens.unsqueeze(0))[0].detach()
+
+        # Register embeddings as buffers so Lightning can handle their device placement
+        self.register_buffer(
+            "bg2fence_emb", text_encoder(fence_prompt_tokens.unsqueeze(0))[0].detach()
+        )
+        self.register_buffer(
+            "fence2bg_emb", text_encoder(bg_prompt_tokens.unsqueeze(0))[0].detach()
+        )
 
     def forward(self, x, direction):
         batch_size = x.shape[0]
         timesteps = torch.tensor(
             [self.scheduler.config.num_train_timesteps - 1] * batch_size,
-            device=self.device,
+            device=x.device,  # Use input tensor's device
         ).long()
 
         caption_emb_base = (
             self.bg2fence_emb if direction == "Bg2Fence" else self.fence2bg_emb
         )
-        # check dtype ! (to  tochfloat 32)
-        caption_emb = caption_emb_base.repeat(batch_size, 1, 1).to(self.device)
+        # No need for explicit device movement as buffers follow module's device
+        caption_emb = caption_emb_base.repeat(batch_size, 1, 1)
 
-        # encode to latent space
         x_enc, current_down_blocks = self.encoder(x, direction=direction)
-        # duffision steps
         model_pred = self.unet(
             x_enc,
             timesteps,
@@ -459,7 +461,6 @@ class SDTurboGenerator(pl.LightningModule):
             ]
         )
 
-        # decode to image space
         x_out_decoded = self.decoder(
             x_out, direction=direction, current_down_blocks=current_down_blocks
         )

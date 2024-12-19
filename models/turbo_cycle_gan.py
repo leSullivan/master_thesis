@@ -81,6 +81,23 @@ class TurboCycleGAN(pl.LightningModule):
         rec_fences = self.generator.forward(fake_bgs, "Bg2Fence")
         rec_bgs = self.generator.forward(fake_fences, "Fence2Bg")
 
+        if rec_bgs.size() != bg_imgs.size():
+            print(f"Resizing rec_bgs from {rec_bgs.size()} to {bg_imgs.size()}")
+            rec_bgs = nn.functional.interpolate(
+                rec_bgs, size=bg_imgs.size()[2:], mode="bilinear", align_corners=False
+            )
+
+        if rec_fences.size() != fence_imgs.size():
+            print(
+                f"Resizing rec_fences from {rec_fences.size()} to {fence_imgs.size()}"
+            )
+            rec_fences = nn.functional.interpolate(
+                rec_fences,
+                size=fence_imgs.size()[2:],
+                mode="bilinear",
+                align_corners=False,
+            )
+
         # cycle loss
         loss_cycle_bg = self.criterion_cycle(rec_bgs, bg_imgs)
         loss_cycle_fence = self.criterion_cycle(rec_fences, fence_imgs)

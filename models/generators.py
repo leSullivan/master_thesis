@@ -389,10 +389,11 @@ class SDTurboGenerator(pl.LightningModule):
         super(SDTurboGenerator, self).__init__()
         # Let Lightning handle the device management instead of manual assignment
         # Remove the get_device() call as Lightning will handle this
+        device = get_device()
 
         self.unet = initialize_unet(model=model)
         self.vae = initialize_vae(model=model)
-        self.scheduler = get_1step_sched(model=model)  # Remove device parameter
+        self.scheduler = get_1step_sched(device, model=model)  # Remove device parameter
 
         self.encoder = VAE_encode(self.vae, copy.deepcopy(self.vae))
         self.decoder = VAE_decode(self.vae, copy.deepcopy(self.vae))
@@ -659,32 +660,60 @@ def my_vae_encoder_fwd(self, sample):
 
 
 def my_vae_decoder_fwd(self, sample, latent_embeds=None):
+    # Initial convolution
     sample = self.conv_in(sample)
+
+    # Store the data type for upscaling
     upscale_dtype = next(iter(self.up_blocks.parameters())).dtype
-    # middle
+
+    # Middle block (with optional latent embeddings)
     sample = self.mid_block(sample, latent_embeds)
+
+    # Convert sample to the upscale data type
     sample = sample.to(upscale_dtype)
+
     if not self.ignore_skip:
+        # Define skip convolutions
         skip_convs = [
             self.skip_conv_1,
             self.skip_conv_2,
             self.skip_conv_3,
             self.skip_conv_4,
         ]
-        # up
+
+        # Upsampling with skip connections
         for idx, up_block in enumerate(self.up_blocks):
+            # Get the skip connection from previous layers
             skip_in = skip_convs[idx](self.incoming_skip_acts[::-1][idx] * self.gamma)
-            # add skip
+
+            # Ensure the skip connection matches the sample size before adding
+            if skip_in.size(2) != sample.size(2) or skip_in.size(3) != sample.size(3):
+                print(f"Resizing skip_in from {skip_in.size()} to {sample.size()}")
+                skip_in = nn.functional.interpolate(
+                    skip_in,
+                    size=sample.size()[2:],
+                    mode="bilinear",
+                    align_corners=False,
+                )
+
+            # Add the skip connection to the sample
             sample = sample + skip_in
+
+            # Apply upsampling block
             sample = up_block(sample, latent_embeds)
     else:
+        # If no skip connections, just pass through upsampling blocks
         for idx, up_block in enumerate(self.up_blocks):
             sample = up_block(sample, latent_embeds)
-    # post-process
+
+    # Post-processing
     if latent_embeds is None:
         sample = self.conv_norm_out(sample)
     else:
         sample = self.conv_norm_out(sample, latent_embeds)
+
+    # Final activation and output convolution
     sample = self.conv_act(sample)
     sample = self.conv_out(sample)
+
     return sample

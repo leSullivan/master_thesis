@@ -95,7 +95,6 @@ def main(args):
 
     if args.model_name.lower() == "turbo_cyclegan":
         trainer = pl.Trainer(
-            strategy=DDPStrategy(),
             max_epochs=args.num_epochs,
             logger=logger,
             accelerator="cuda",

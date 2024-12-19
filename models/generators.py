@@ -685,7 +685,7 @@ def my_vae_decoder_fwd(self, sample, latent_embeds=None):
 
             # Ensure the skip connection matches the sample size before adding
             if skip_in.size(2) != sample.size(2) or skip_in.size(3) != sample.size(3):
-                print(f"Resizing sample from {sample.size()} to {skip_in.size()}")
+                # print(f"Resizing sample from {sample.size()} to {skip_in.size()}")
                 sample = nn.functional.interpolate(
                     sample,
                     size=skip_in.size()[2:],

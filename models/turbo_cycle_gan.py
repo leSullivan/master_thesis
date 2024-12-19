@@ -72,8 +72,8 @@ class TurboCycleGAN(pl.LightningModule):
             return nn.MSELoss()
 
     def training_step(self, batch, batch_idx):
-        bg_imgs, fence_imgs = batch["background"], batch["fence"]
         optimizer_G, optimizer_D = self.optimizers()
+        bg_imgs, fence_imgs = batch["background"], batch["fence"]
 
         fake_fences = self.generator.forward(bg_imgs, "Bg2Fence")
         fake_bgs = self.generator.forward(fence_imgs, "Fence2Bg")
@@ -81,29 +81,13 @@ class TurboCycleGAN(pl.LightningModule):
         rec_fences = self.generator.forward(fake_bgs, "Bg2Fence")
         rec_bgs = self.generator.forward(fake_fences, "Fence2Bg")
 
-        if rec_bgs.size() != bg_imgs.size():
-            print(f"Resizing rec_bgs from {rec_bgs.size()} to {bg_imgs.size()}")
-            rec_bgs = nn.functional.interpolate(
-                rec_bgs, size=bg_imgs.size()[2:], mode="bilinear", align_corners=False
-            )
-
-        if rec_fences.size() != fence_imgs.size():
-            print(
-                f"Resizing rec_fences from {rec_fences.size()} to {fence_imgs.size()}"
-            )
-            rec_fences = nn.functional.interpolate(
-                rec_fences,
-                size=fence_imgs.size()[2:],
-                mode="bilinear",
-                align_corners=False,
-            )
-
-        # cycle loss
+        # Cycle loss
         loss_cycle_bg = self.criterion_cycle(rec_bgs, bg_imgs)
         loss_cycle_fence = self.criterion_cycle(rec_fences, fence_imgs)
         loss_cycle = loss_cycle_bg + loss_cycle_fence
         self.log("generator/loss_cycle", loss_cycle)
 
+        # Perceptual loss
         loss_perceptual_fence = self.criterion_perceptual(
             fence_imgs, fake_fences
         ).mean()
@@ -111,7 +95,7 @@ class TurboCycleGAN(pl.LightningModule):
         loss_perceptual = loss_perceptual_bg + loss_perceptual_fence
         self.log("generator/loss_perceptual", loss_perceptual)
 
-        # adversarial loss
+        # Adversarial loss
         if self.hparams["d_type"] == "vagan":
             pred_fake = self.discriminator_Fence(fake_fences, for_G=True)
             loss_gan_Bg2Fence = pred_fake.mean()
@@ -120,11 +104,7 @@ class TurboCycleGAN(pl.LightningModule):
             loss_gan_Bg2Fence = self.criterion_gan(
                 pred_fake, torch.ones_like(pred_fake, device=self.device)
             )
-        self.log(
-            "generator/loss_adv_Bg2Fence",
-            loss_gan_Bg2Fence,
-            on_epoch=True,
-        )
+        self.log("generator/loss_adv_Bg2Fence", loss_gan_Bg2Fence, on_epoch=True)
 
         if self.hparams["d_type"] == "vagan":
             pred_fake = self.discriminator_Bg(fake_bgs, for_G=True)
@@ -134,26 +114,17 @@ class TurboCycleGAN(pl.LightningModule):
             loss_gan_Fence2Bg = self.criterion_gan(
                 pred_fake, torch.ones_like(pred_fake, device=self.device)
             )
-        self.log(
-            "generator/loss_adv_Fence2Bg",
-            loss_gan_Fence2Bg,
-            on_epoch=True,
-        )
+        self.log("generator/loss_adv_Fence2Bg", loss_gan_Fence2Bg, on_epoch=True)
 
         loss_adv = loss_gan_Bg2Fence + loss_gan_Fence2Bg
+        self.log("generator/loss_adv", loss_adv, on_epoch=True)
 
-        self.log(
-            "generator/loss_adv",
-            loss_gan_Fence2Bg,
-            on_epoch=True,
-        )
-
+        # Total generator loss
         loss_G = (
             loss_adv * self.hparams["lambda_gan"]
             + self.hparams["lambda_cycle"] * loss_cycle
             + self.hparams["lambda_perceptual"] * loss_perceptual
         )
-
         self.log("generator/loss_G", loss_G, prog_bar=True, on_epoch=True)
 
         optimizer_G.zero_grad()

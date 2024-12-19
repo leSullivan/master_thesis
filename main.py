@@ -4,7 +4,7 @@ import torch
 import argparse
 import pytorch_lightning as pl
 
-from pytorch_lightning.strategies import FSDPStrategy
+from pytorch_lightning.strategies import FSDPStrategy, DDPStrategy
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 
@@ -95,11 +95,10 @@ def main(args):
 
     if args.model_name.lower() == "turbo_cyclegan":
         trainer = pl.Trainer(
-            strategy=FSDPStrategy(),
+            strategy=DDPStrategy(),
             max_epochs=args.num_epochs,
             logger=logger,
             accelerator="cuda",
-            devices=4,
             callbacks=[checkpoint_callback, lr_monitor],
         )
     else:

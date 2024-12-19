@@ -476,7 +476,6 @@ class VAE_encode(pl.LightningModule):
 
     def forward(self, x, direction):
         assert direction in ["Bg2Fence", "Fence2Bg"]
-        print("encoder", direction)
 
         _vae = self.vae_BgToFence if direction == "Bg2Fence" else self.vae_Fence2Bg
 
@@ -492,7 +491,6 @@ class VAE_decode(pl.LightningModule):
         self.vae_Fence2Bg = vae_Fence2Bg
 
     def forward(self, x, direction, current_down_blocks):
-        print("decoder", direction)
         assert direction in ["Bg2Fence", "Fence2Bg"]
         _vae = self.vae_BgToFence if direction == "Bg2Fence" else self.vae_Fence2Bg
 
@@ -654,7 +652,6 @@ def my_vae_encoder_fwd(self, sample):
     sample = self.conv_norm_out(sample)
     sample = self.conv_act(sample)
     sample = self.conv_out(sample)
-    print("assign l_blocks")
     self.current_down_blocks = l_blocks
     return sample
 
@@ -688,10 +685,10 @@ def my_vae_decoder_fwd(self, sample, latent_embeds=None):
 
             # Ensure the skip connection matches the sample size before adding
             if skip_in.size(2) != sample.size(2) or skip_in.size(3) != sample.size(3):
-                print(f"Resizing skip_in from {skip_in.size()} to {sample.size()}")
-                skip_in = nn.functional.interpolate(
-                    skip_in,
-                    size=sample.size()[2:],
+                print(f"Resizing sample from {sample.size()} to {skip_in.size()}")
+                sample = nn.functional.interpolate(
+                    sample,
+                    size=skip_in.size()[2:],
                     mode="bilinear",
                     align_corners=False,
                 )

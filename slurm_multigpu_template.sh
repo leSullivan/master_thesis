@@ -6,8 +6,8 @@
 #SBATCH --nodes=1         
 #SBATCH --ntasks-per-node=2  
 #SBATCH --cpus-per-task=4            
-#SBATCH --mem=100GB                            
-#SBATCH --gres=gpu:v100:4
+#SBATCH --mem=1000GB                            
+#SBATCH --gres=gpu:v100:2
 #SBATCH --time=48:00:00
 
 # Load necessary modules
@@ -40,5 +40,5 @@ srun python main.py \
     --ngf=$NGF \
     --crop=$CROP \
     --batch_size=1 \
-    --img-h=256 \
-    --img-w=256
+    --img-h=400 \
+    --img-w=600

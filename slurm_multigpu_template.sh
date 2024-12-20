@@ -4,10 +4,10 @@
 #SBATCH --output=slurm_res/output_%j.txt    
 #SBATCH --error=slurm_res/error_%j.txt 
 #SBATCH --nodes=1         
-#SBATCH --ntasks-per-node=2  
+#SBATCH --ntasks-per-node=1  
 #SBATCH --cpus-per-task=4            
-#SBATCH --mem=100GB                            
-#SBATCH --gres=gpu:v100:2
+#SBATCH --mem=50GB                            
+#SBATCH --gres=gpu:v100:1
 #SBATCH --time=48:00:00
 
 # Load necessary modules

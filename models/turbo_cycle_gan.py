@@ -228,16 +228,16 @@ class TurboCycleGAN(pl.LightningModule):
         scheduler_D.step()
 
     def configure_optimizers(self):
-        optimizer_G = torch.optim.AdamW(
+        optimizer_G = torch.optim.SGD(
             list(self.generator.parameters()),
             lr=self.hparams.lr,
-            betas=(self.hparams.beta1, self.hparams.beta2),
+            # betas=(self.hparams.beta1, self.hparams.beta2),
         )
-        optimizer_D = torch.optim.AdamW(
+        optimizer_D = torch.optim.SGD(
             list(self.discriminator_Bg.parameters())
             + list(self.discriminator_Fence.parameters()),
             lr=self.hparams.lr,
-            betas=(self.hparams.beta1, self.hparams.beta2),
+            # betas=(self.hparams.beta1, self.hparams.beta2),
         )
 
         scheduler_G = {

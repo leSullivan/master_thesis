@@ -409,29 +409,21 @@ class SDTurboGenerator(pl.LightningModule):
         )
 
         # Move token processing to device-aware context
-        fence_prompt_tokens = (
-            tokenizer(
-                prompt_fence,
-                max_length=tokenizer.model_max_length,
-                padding="max_length",
-                truncation=True,
-                return_tensors="pt",
-            )
-            .input_ids[0]
-            .to(device)
-        )
+        fence_prompt_tokens = tokenizer(
+            prompt_fence,
+            max_length=tokenizer.model_max_length,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+        ).input_ids[0]
 
-        bg_prompt_tokens = (
-            tokenizer(
-                prompt_bg,
-                max_length=tokenizer.model_max_length,
-                padding="max_length",
-                truncation=True,
-                return_tensors="pt",
-            )
-            .input_ids[0]
-            .to(device)
-        )
+        bg_prompt_tokens = tokenizer(
+            prompt_bg,
+            max_length=tokenizer.model_max_length,
+            padding="max_length",
+            truncation=True,
+            return_tensors="pt",
+        ).input_ids[0]
 
         # Register embeddings as buffers so Lightning can handle their device placement
         self.register_buffer(

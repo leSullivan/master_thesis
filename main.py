@@ -86,12 +86,12 @@ def main(args):
 
     logger.log_hyperparams(args)
 
-    checkpoint_callback = ModelCheckpoint(
-        save_top_k=-1,
-        every_n_epochs=100,
-        filename="{epoch:04d}",
-        save_last=True,
-    )
+    # checkpoint_callback = ModelCheckpoint(
+    #     save_top_k=-1,
+    #     every_n_epochs=100,
+    #     filename="{epoch:04d}",
+    #     save_last=True,
+    # )
 
     if args.model_name.lower() == "turbo_cyclegan":
         trainer = pl.Trainer(
@@ -99,14 +99,14 @@ def main(args):
             max_epochs=args.num_epochs,
             logger=logger,
             accelerator="cuda",
-            callbacks=[checkpoint_callback, lr_monitor],
+            callbacks=[lr_monitor],
         )
     else:
         trainer = pl.Trainer(
             precision="16-mixed",
             max_epochs=args.num_epochs,
             logger=logger,
-            callbacks=[checkpoint_callback, lr_monitor],
+            callbacks=[lr_monitor],
         )
 
     trainer.fit(model, data_module)

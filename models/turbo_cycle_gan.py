@@ -194,7 +194,7 @@ class TurboCycleGAN(pl.LightningModule):
 
         bg_imgs, _ = batch
 
-        fake_fence_imgs = self.generator_Bg2Fence(bg_imgs)
+        fake_fence_imgs = self.generator.forward(bg_imgs, "Bg2Fence")
 
         grid = make_grid(
             torch.cat((bg_imgs, fake_fence_imgs), dim=0),

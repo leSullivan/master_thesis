@@ -32,16 +32,12 @@ crop=False
 
 
 for model_name in cyclegan; do 
-  for g_type in resnet-6 unet_128; do
-    for d_type in patch vagan; do
-      for ngf in 32 64; do
+  for g_type in unet_256 resnet-6; do
+    for d_type in vagan; do
+      for ngf in 64; do
         for lambda_perceptual in 1 5 10; do
          for lambda_cycle in 1 5 10; do
-          if [ $model_name == "turbo_cyclegan" ]; then
-            sbatch --export=MODEL_NAME=$model_name,LAMBDA_CYCLE=$lambda_cycle,G_TYPE=$g_type,D_TYPE=$d_type,LAMBDA_PERCEPTUAL=$lambda_perceptual,LAMBDA_GAN=$lambda_gan,NGF=$ngf,CROP=$crop slurm_multigpu_template.sh
-          else
             sbatch --export=MODEL_NAME=$model_name,LAMBDA_CYCLE=$lambda_cycle,G_TYPE=$g_type,D_TYPE=$d_type,LAMBDA_PERCEPTUAL=$lambda_perceptual,LAMBDA_GAN=$lambda_gan,NGF=$ngf,CROP=$crop slurm_template.sh
-          fi
           done
         done
       done

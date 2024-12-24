@@ -65,11 +65,15 @@ class TurboCycleGAN(pl.LightningModule):
         self.calculate_scores_during_training = calculate_scores_during_training
         self.automatic_optimization = False
 
-    def init_adv_loss(self):
-        if self.hparams["d_type"] == "basic":
-            return nn.BCELoss()
-        else:
-            return nn.MSELoss()
+    def on_train_start(self):
+        imgs = [
+            fence_imgs
+            for fence_imgs in self.trainer.datamodule.train_dataloader()["fence"]
+        ]
+
+        fence_imgs = torch.cat([*imgs], dim=0).to(self.device)
+        fence_imgs = preprocess_for_fid(fence_imgs)
+        self.fid.update(fence_imgs, real=True)
 
     def training_step(self, batch, batch_idx):
         optimizer_G, optimizer_D = self.optimizers()

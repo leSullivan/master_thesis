@@ -15,4 +15,4 @@
 source python_env/bin/activate
 
 # Run your training script
-python main.py --model_name=$MODEL_NAME --g_type=$G_TYPE --d_type=$D_TYPE --lambda_cycle=$LAMBDA_CYCLE --lambda_perceptual=$LAMBDA_PERCEPTUAL --lambda_gan=$LAMBDA_GAN --ngf=$NGF --crop=$CROP  --batch_size=3
+python main.py --model_name=$MODEL_NAME --g_type=$G_TYPE --d_type=$D_TYPE --lambda_cycle=$LAMBDA_CYCLE --lambda_perceptual=$LAMBDA_PERCEPTUAL --lambda_gan=$LAMBDA_GAN --ngf=$NGF --crop=$CROP  --batch_size=2

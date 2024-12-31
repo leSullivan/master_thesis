@@ -98,7 +98,7 @@ def main(args):
         trainer = pl.Trainer(
             accelerator="gpu",
             strategy=FSDPStrategy(
-                cpu_offload=True,
+                # cpu_offload=True,
                 auto_wrap_policy={SDTurboGenerator},
             ),
             max_epochs=args.num_epochs,

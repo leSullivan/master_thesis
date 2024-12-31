@@ -96,11 +96,14 @@ def main(args):
     # )
 
     if args.model_name.lower() == "turbo_cyclegan":
+        trainable_modules = get_trainable_modules(SDTurboGenerator)
+
+        print(trainable_modules)
 
         trainer = pl.Trainer(
             accelerator="gpu",
             strategy=FSDPStrategy(
-                auto_wrap_policy=get_trainable_modules(SDTurboGenerator),
+                auto_wrap_policy=trainable_modules,
             ),
             max_epochs=args.num_epochs,
             logger=logger,

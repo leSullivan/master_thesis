@@ -108,7 +108,7 @@ def main(args):
         trainer = pl.Trainer(
             accelerator="gpu",
             strategy=FSDPStrategy(
-                auto_wrap_policy=trainable_modules,
+                auto_wrap_policy={*trainable_modules},
             ),
             max_epochs=args.num_epochs,
             logger=logger,

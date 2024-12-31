@@ -12,7 +12,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from src.create_training_dataset import sample_images
 from src.data_pipeline import UnpairedImageDataModule
 from models import CGAN, CycleGAN, TurboCycleGAN
-from models.generators import SDTurboGenerator
+from models.generators import SDTurboGenerator, initialize_unet, initialize_vae
 
 from src.config import (
     SEED,
@@ -95,11 +95,14 @@ def main(args):
     # )
 
     if args.model_name.lower() == "turbo_cyclegan":
+
+        lora_unet = initialize_unet(return_lora_module_names=True)
+        lora_vae = initialize_vae(return_lora_module_names=True)
+
         trainer = pl.Trainer(
             accelerator="gpu",
             strategy=FSDPStrategy(
-                # cpu_offload=True,
-                auto_wrap_policy={SDTurboGenerator},
+                auto_wrap_policy=[*lora_unet, *lora_vae],
             ),
             max_epochs=args.num_epochs,
             logger=logger,

@@ -569,12 +569,11 @@ def initialize_unet(rank=8, return_lora_module_names=False, model="sd-turbo"):
     unet.set_adapters(["default_encoder", "default_decoder", "default_others"])
 
     if return_lora_module_names:
-        return (
-            unet,
-            l_target_modules_encoder,
-            l_target_modules_decoder,
-            l_modules_others,
-        )
+        return [
+            *l_target_modules_encoder,
+            *l_target_modules_decoder,
+            *l_modules_others,
+        ]
     else:
         return unet
 
@@ -626,7 +625,7 @@ def initialize_vae(rank=4, return_lora_module_names=False, model="sd-turbo"):
     )
     vae.add_adapter(vae_lora_config, adapter_name="vae_skip")
     if return_lora_module_names:
-        return vae, l_vae_target_modules
+        return [*l_vae_target_modules]
     else:
         return vae
 

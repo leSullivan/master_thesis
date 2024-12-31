@@ -96,7 +96,7 @@ def main(args):
     # )
 
     if args.model_name.lower() == "turbo_cyclegan":
-        trainable_modules = get_trainable_modules(TurboCycleGAN)
+        trainable_modules = get_trainable_modules(GAN)
 
         print(trainable_modules)
 

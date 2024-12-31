@@ -4,27 +4,34 @@
 #SBATCH --output=slurm_res/output_%j.txt    
 #SBATCH --error=slurm_res/error_%j.txt 
 #SBATCH --nodes=1         
-#SBATCH --ntasks-per-node=1  
+#SBATCH --ntasks-per-node=2  
 #SBATCH --cpus-per-task=4            
-#SBATCH --mem=50GB                            
-#SBATCH --gres=gpu:v100:1
+#SBATCH --mem=100GB                            
+#SBATCH --gres=gpu:v100:2
 #SBATCH --time=48:00:00
 
 # Load necessary modules
-module load NCCL
+module load CUDA/12.4.0
 
-# Set up NCCL environment
-export NCCL_DEBUG=INFO
-export NCCL_IB_DISABLE=0
-export NCCL_NET_GDR_DISABLE=0
-export NCCL_IB_CUDA_SUPPORT=1
+# # Set up NCCL environment
+# export NCCL_DEBUG=INFO
+# export NCCL_IB_DISABLE=0
+# export NCCL_NET_GDR_DISABLE=0
+# export NCCL_IB_CUDA_SUPPORT=1
 
-# Set up distributed training environment variables
-export MASTER_PORT=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))
-export MASTER_ADDR=$(hostname)
-export WORLD_SIZE=$(($SLURM_NNODES * $SLURM_NTASKS_PER_NODE))
-export RANK=$SLURM_PROCID
-export LOCAL_RANK=$SLURM_LOCALID
+# # Set up distributed training environment variables
+# export MASTER_PORT=$(expr 10000 + $(echo -n $SLURM_JOBID | tail -c 4))
+# export MASTER_ADDR=$(hostname)
+# export WORLD_SIZE=$(($SLURM_NNODES * $SLURM_NTASKS_PER_NODE))
+# export RANK=$SLURM_PROCID
+# export LOCAL_RANK=$SLURM_LOCALID
+
+
+# Set NCCL environment variables
+# export NCCL_SOCKET_IFNAME=eth0        # Use the correct network interface
+# export NCCL_USE_IPV6=0                # Disable IPv6 if not supported
+export NCCL_DEBUG=INFO                # Optional: Enable debug logging for NCCL
+
 
 # Activate virtual environment
 source python_env/bin/activate

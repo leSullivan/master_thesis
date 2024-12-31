@@ -1,7 +1,7 @@
 torch
 torchvision
 tensorboard
-pytorch-lightning
+pytorch-lightning==2.5.0
 lpips
 peft
 transformers

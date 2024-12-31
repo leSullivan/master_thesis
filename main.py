@@ -12,6 +12,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint, LearningRateMonitor
 from src.create_training_dataset import sample_images
 from src.data_pipeline import UnpairedImageDataModule
 from models import CGAN, CycleGAN, TurboCycleGAN
+from models.generators import SDTurboGenerator
 
 from src.config import (
     SEED,
@@ -95,10 +96,13 @@ def main(args):
 
     if args.model_name.lower() == "turbo_cyclegan":
         trainer = pl.Trainer(
-            strategy=DDPStrategy(find_unused_parameters=True),
+            accelerator="gpu",
+            strategy=FSDPStrategy(
+                cpu_offload=True,
+                auto_wrap_policy={SDTurboGenerator},
+            ),
             max_epochs=args.num_epochs,
             logger=logger,
-            accelerator="cuda",
             callbacks=[lr_monitor],
         )
     else:
@@ -109,7 +113,7 @@ def main(args):
             callbacks=[lr_monitor],
         )
 
-    trainer.fit(model, data_module)
+    trainer.fit(model, datamodule=data_module)
 
 
 def _get_checkpoint_path(model_name, version_name):

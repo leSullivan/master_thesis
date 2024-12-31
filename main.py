@@ -98,7 +98,12 @@ def main(args):
     if args.model_name.lower() == "turbo_cyclegan":
         trainable_modules = get_trainable_modules(GAN)
 
-        print(trainable_modules)
+        print("_______")
+        print(len(trainable_modules))
+        print("GOGOGO", trainable_modules)
+        for module in trainable_modules:
+            print(type(module))
+        print("_______")
 
         trainer = pl.Trainer(
             accelerator="gpu",

@@ -11,6 +11,18 @@ def get_device():
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
+def get_trainable_modules(lightning_module):
+    """
+    Returns a list of trainable modules from a PyTorch Lightning module.
+    """
+    trainable_modules = []
+    for _, module in lightning_module.named_modules():
+        # Check if the module has trainable parameters
+        if any(param.requires_grad for param in module.parameters(recurse=False)):
+            trainable_modules.append(module)
+    return trainable_modules
+
+
 def init_weights(net, net_type, init_type="kaiming", init_gain=0.02):
     """Initialize network weights.
 

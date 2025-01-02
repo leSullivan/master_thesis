@@ -78,7 +78,7 @@ def main(args):
     logger = TensorBoardLogger(
         CHECKPOINT_PATH,
         name=(
-            f"{args.model_name}_{args.g_type}_{args.d_type}_ngf{args.ngf}_perc{args.lambda_perceptual}_cyc{args.lambda_cycle}"
+            f"{args.model_name}_{args.g_type}_{args.d_type}_ngf{args.ngf}_perc{args.lambda_perceptual}_cyc{args.lambda_cycle}_({args.img_h},{args.img_w})"
             if not CROP
             else f"CROP_{args.model_name}_{args.g_type}_{args.d_type}_ngf{args.ngf}_perc{args.lambda_perceptual}_cyc{args.lambda_cycle}"
         ),
@@ -158,12 +158,12 @@ if __name__ == "__main__":
         default=calc_scores == "True",
     )
     parser.add_argument(
-        "--img-w",
+        "--img_w",
         type=int,
         default=IMG_W,
     )
     parser.add_argument(
-        "--img-h",
+        "--img_h",
         type=int,
         default=IMG_H,
     )

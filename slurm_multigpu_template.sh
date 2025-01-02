@@ -47,5 +47,5 @@ srun python main.py \
     --ngf=$NGF \
     --crop=$CROP \
     --batch_size=1 \
-    --img-h=300 \
-    --img-w=450
+    --img_h=300 \
+    --img_w=450

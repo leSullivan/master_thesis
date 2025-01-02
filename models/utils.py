@@ -17,7 +17,6 @@ def get_trainable_modules(lightning_module):
     """
     trainable_modules = []
     for _, module in lightning_module.named_modules():
-        # Check if the module has trainable parameters
         if any(param.requires_grad for param in module.parameters(recurse=False)):
             trainable_modules.append(module)
     return trainable_modules

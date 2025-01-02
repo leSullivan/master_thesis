@@ -23,5 +23,5 @@ srun python main.py \
     --ngf=$NGF \
     --crop=$CROP \
     --batch_size=1 \
-    --img-h=512 \
-    --img-w=768
+    --img_h=$IMG_H \
+    --img_w=$IMG_W

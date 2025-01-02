@@ -32,8 +32,8 @@ crop=False
 
 
 for model_name in cyclegan; do 
-  for g_type in unet_256 resnet-6; do
-    for d_type in vagan; do
+  for g_type in resnet-6; do
+    for d_type in vagan patch; do
       for ngf in 64; do
         for lambda_perceptual in 1 5 10; do
          for lambda_cycle in 1 5 10; do

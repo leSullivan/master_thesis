@@ -11,7 +11,10 @@
 #SBATCH --time=48:00:00
 #SBATCH --signal=SIGUSR1@90
 
+module load CUDA/12.4.0
+
 source python_env/bin/activate
+unset SLURM_TRES_PER_TASK
 
 srun python main.py \
     --model_name=$MODEL_NAME \

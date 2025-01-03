@@ -31,8 +31,8 @@ img_w=1536
 
 
 for model_name in cyclegan; do 
-  for img_h in 350; do
-    for img_w in 525; do
+  for img_h in 300; do
+    for img_w in 450; do
       for g_type in resnet-6; do
         for d_type in vagan patch; do
           for ngf in 64; do

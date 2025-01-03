@@ -27,12 +27,12 @@ img_w=1536
 #   done
 # done
 
-sbatch --export=MODEL_NAME=$model_name,LAMBDA_CYCLE=$lambda_cycle,G_TYPE=$g_type,D_TYPE=$d_type,LAMBDA_PERCEPTUAL=$lambda_perceptual,LAMBDA_GAN=$lambda_gan,NGF=$ngf,CROP=$crop,IMG_W=$img_w,IMG_H=$img_h slurm_template.sh
+# sbatch --export=MODEL_NAME=$model_name,LAMBDA_CYCLE=$lambda_cycle,G_TYPE=$g_type,D_TYPE=$d_type,LAMBDA_PERCEPTUAL=$lambda_perceptual,LAMBDA_GAN=$lambda_gan,NGF=$ngf,CROP=$crop,IMG_W=$img_w,IMG_H=$img_h slurm_template.sh
 
 
 for model_name in cyclegan; do 
-  for img_h in 400; do
-    for img_w in 600; do
+  for img_h in 350; do
+    for img_w in 525; do
       for g_type in resnet-6; do
         for d_type in vagan patch; do
           for ngf in 64; do

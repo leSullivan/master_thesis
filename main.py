@@ -88,7 +88,6 @@ def main(args):
 
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
 
-    # print(args)
     # logger.log_hyperparams(args)
 
     # checkpoint_callback = ModelCheckpoint(
@@ -230,8 +229,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_epochs", type=int, default=NUM_EPOCHS)
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE)
     parser.add_argument("--lr", type=float, default=LR)
-    parser.add_argument("--weight_decay", type=int, default=WEIGHT_DECAY)
-    parser.add_argument("--adam_eps", type=int, default=ADAM_EPS)
+    parser.add_argument("--weight_decay", type=float, default=WEIGHT_DECAY)
+    parser.add_argument("--adam_eps", type=float, default=ADAM_EPS)
     parser.add_argument("--beta1", type=float, default=BETA1)
     parser.add_argument("--beta2", type=float, default=BETA2)
     parser.add_argument(

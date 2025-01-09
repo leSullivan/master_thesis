@@ -4,11 +4,11 @@
 #SBATCH --output=slurm_res/tcg_output_%j.txt    
 #SBATCH --error=slurm_res/tcg_error_%j.txt 
 #SBATCH --nodes=1         
-#SBATCH --ntasks-per-node=2  
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=4            
-#SBATCH --mem=100GB                            
-#SBATCH --gres=gpu:v100:2
-#SBATCH --time=48:00:00
+#SBATCH --mem=60GB                            
+#SBATCH --gres=gpu:v100:1
+#SBATCH --time=72:00:00
 
 # Load necessary modules
 module load CUDA/12.4.0
@@ -47,5 +47,6 @@ srun python main.py \
     --ngf=$NGF \
     --crop=$CROP \
     --batch_size=1 \
+    --num_epochs=600 \
     --img_h=300 \
     --img_w=450

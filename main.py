@@ -88,7 +88,8 @@ def main(args):
 
     lr_monitor = LearningRateMonitor(logging_interval="epoch")
 
-    logger.log_hyperparams(args)
+    # print(args)
+    # logger.log_hyperparams(args)
 
     # checkpoint_callback = ModelCheckpoint(
     #     save_top_k=-1,

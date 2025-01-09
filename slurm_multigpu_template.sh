@@ -8,7 +8,7 @@
 #SBATCH --cpus-per-task=4            
 #SBATCH --mem=60GB                            
 #SBATCH --gres=gpu:v100:1
-#SBATCH --time=72:00:00
+#SBATCH --time=62:00:00
 
 # Load necessary modules
 module load CUDA/12.4.0

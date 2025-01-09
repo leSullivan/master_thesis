@@ -237,6 +237,7 @@ class TurboCycleGAN(pl.LightningModule):
             lr=self.hparams.lr,
             betas=(self.hparams.beta1, self.hparams.beta2),
             weight_decay=self.hparams.weight_decay,
+            eps=self.hparams.adam_eps,
         )
         optimizer_D = torch.optim.AdamW(
             list(self.discriminator_Bg.parameters())
@@ -244,6 +245,7 @@ class TurboCycleGAN(pl.LightningModule):
             lr=self.hparams.lr,
             betas=(self.hparams.beta1, self.hparams.beta2),
             weight_decay=self.hparams.weight_decay,
+            eps=self.hparams.adam_eps,
         )
 
         scheduler_G = {

@@ -43,6 +43,7 @@ from src.config import (
     PROMPT_FENCE,
     CROP,
     WEIGHT_DECAY,
+    ADAM_EPS,
 )
 
 CHECKPOINT_PATH = os.getenv("CHECKPOINT_PATH", "/work/jj17qosa-gan/")
@@ -229,6 +230,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE)
     parser.add_argument("--lr", type=float, default=LR)
     parser.add_argument("--weight_decay", type=int, default=WEIGHT_DECAY)
+    parser.add_argument("--adam_eps", type=int, default=ADAM_EPS)
     parser.add_argument("--beta1", type=float, default=BETA1)
     parser.add_argument("--beta2", type=float, default=BETA2)
     parser.add_argument(

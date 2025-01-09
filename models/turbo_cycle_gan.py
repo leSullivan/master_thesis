@@ -236,12 +236,14 @@ class TurboCycleGAN(pl.LightningModule):
             list(self.generator.parameters()),
             lr=self.hparams.lr,
             betas=(self.hparams.beta1, self.hparams.beta2),
+            weight_decay=self.hparams.weight_decay,
         )
         optimizer_D = torch.optim.AdamW(
             list(self.discriminator_Bg.parameters())
             + list(self.discriminator_Fence.parameters()),
             lr=self.hparams.lr,
             betas=(self.hparams.beta1, self.hparams.beta2),
+            weight_decay=self.hparams.weight_decay,
         )
 
         scheduler_G = {

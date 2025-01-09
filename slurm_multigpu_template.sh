@@ -49,5 +49,5 @@ srun python main.py \
     --batch_size=1 \
     --num_epochs=600 \
     --lr=5e-6 \
-    --img_h=300 \
-    --img_w=450
+    --img_h=256 \
+    --img_w=384

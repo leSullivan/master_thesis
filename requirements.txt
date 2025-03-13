@@ -1,0 +1,9 @@
+torch
+torchvision
+tensorboard
+pytorch-lightning==2.5.0
+lpips
+peft
+transformers
+diffusers==0.25.1
+vision_aided_loss
